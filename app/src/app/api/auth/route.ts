@@ -31,6 +31,15 @@ export async function GET(req: NextRequest) {
     return checkTokenStatus(token)
   }
 
+  // Handle OAuth callback from Google (GET with ?code=)
+  const code = searchParams.get('code')
+  if (code) {
+    // This is an OAuth callback — redirect to frontend callback page
+    const frontendCallback = 'https://skalexs.duckdns.org/api/auth/callback'
+    const state = searchParams.get('state') ?? ''
+    return NextResponse.redirect(`${frontendCallback}?code=${code}&state=${state}`)
+  }
+
   // Default: login - generate authorization URL
   const state = Buffer.from(`${Date.now()}-${Math.random()}`).toString('base64url')
   const params = new URLSearchParams({
@@ -70,12 +79,12 @@ export async function POST(req: NextRequest) {
       }).toString(),
     })
 
-    if (!tokenResp.ok) {
+    if (!tokenResp.ok) { console.error('[auth POST] token exchange failed:', tokenResp.status)
       const err = await tokenResp.text()
-      return NextResponse.json({ ok: false, error: 'Token exchange failed', detail: err }, { status: 400 })
+      console.error("[auth POST] error body:", err); return NextResponse.json({ ok: false, error: 'Token exchange failed', detail: err }, { status: 400 })
     }
 
-    const tokenData = await tokenResp.json()
+    const tokenData = await tokenResp.json(); console.error('[auth POST] token received, expires_in:', tokenData.expires_in)
     const { access_token, refresh_token, expires_in } = tokenData
 
     const userInfoResp = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
@@ -116,16 +125,30 @@ export async function DELETE() {
 }
 
 async function checkTokenStatus(token: string) {
-  try {
-    const resp = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-    if (!resp.ok) return NextResponse.json({ connected: false, error: 'Token expired' })
-    const info = await resp.json()
-    return NextResponse.json({ connected: true, email: info.email, name: info.name })
-  } catch {
-    return NextResponse.json({ connected: false })
+  // Try up to 3 times with retry on network failure
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const resp = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+        headers: { Authorization: `Bearer ${token}` },
+        signal: AbortSignal.timeout(5000),
+      })
+      if (resp.ok) {
+        const info = await resp.json()
+        return NextResponse.json({ connected: true, email: info.email, name: info.name })
+      }
+      if (resp.status !== 401) {
+        // Network error or server error — retry
+        await new Promise(r => setTimeout(r, 500 * (attempt + 1)))
+        continue
+      }
+      // 401 = token expired/invalid — no retry needed
+      return NextResponse.json({ connected: false, error: 'Token invalid' })
+    } catch {
+      // Network error — retry if attempts remaining
+      if (attempt < 2) await new Promise(r => setTimeout(r, 500 * (attempt + 1)))
+    }
   }
+  return NextResponse.json({ connected: false, error: 'Google unreachable' })
 }
 
 async function getCalendars(accessToken: string) {

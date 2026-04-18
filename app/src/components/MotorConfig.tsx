@@ -132,29 +132,51 @@ export default function MotorConfig({ onClose }: { onClose: () => void }) {
   async function saveConfig() {
     setSaving(true)
     setSaveMessage('')
-    const config = { selectedCalendars, aiPrompt, savedAt: new Date().toISOString() }
-    localStorage.setItem('timeflow_motor_config', JSON.stringify(config))
+    // Save to server
     try {
-      await fetch('/api/auth', {
-        method: 'PATCH',
+      await fetch('/api/motor-config', {
+        method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ selectedCalendars, aiPrompt }),
+        body: JSON.stringify({
+          calendarIds: selectedCalendars,
+          promptIA: aiPrompt,
+          googleConnected: connected,
+        }),
       })
     } catch {}
+    // Also save locally as backup
+    localStorage.setItem('timeflow_motor_config', JSON.stringify({ selectedCalendars, aiPrompt }))
     setSaveMessage('✓ Configuración guardada')
     setTimeout(() => setSaveMessage(''), 3000)
     setSaving(false)
   }
 
   useEffect(() => {
-    const saved = localStorage.getItem('timeflow_motor_config')
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved)
-        if (parsed.selectedCalendars) setSelectedCalendars(parsed.selectedCalendars)
-        if (parsed.aiPrompt) setAiPrompt(parsed.aiPrompt)
-      } catch {}
-    }
+    // Load config from server
+    fetch('/api/motor-config')
+      .then(r => r.json())
+      .then(data => {
+        if (data.calendarIds) {
+          setSelectedCalendars({
+            alex: { id: data.calendarIds.alex ?? '', label: 'Alex (Trabajo)', tipo: 'trabajo' },
+            adriana: { id: data.calendarIds.adriana ?? '', label: 'Adriana (Trabajo)', tipo: 'trabajo' },
+            colegios: { id: data.calendarIds.colegios ?? '', label: 'Colegios', tipo: 'escuela' },
+            ninosCasa: { id: data.calendarIds.ninos ?? '', label: 'Niños y Casa', tipo: 'familia' },
+          })
+        }
+        if (data.promptIA) setAiPrompt(data.promptIA)
+      })
+      .catch(() => {
+        // Fallback to localStorage
+        const saved = localStorage.getItem('timeflow_motor_config')
+        if (saved) {
+          try {
+            const parsed = JSON.parse(saved)
+            if (parsed.selectedCalendars) setSelectedCalendars(parsed.selectedCalendars)
+            if (parsed.aiPrompt) setAiPrompt(parsed.aiPrompt)
+          } catch {}
+        }
+      })
     checkTokenStatus()
   }, [])
 
@@ -252,9 +274,9 @@ export default function MotorConfig({ onClose }: { onClose: () => void }) {
                       <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', borderRadius: 8, background: '#13131a', marginBottom: 4, borderLeft: `3px solid ${TIPO_COLORS[bloque.tipo] ?? '#6b7280'}` }}>
                         <span style={{ fontSize: 11, fontWeight: 700, color: TIPO_COLORS[bloque.tipo] ?? '#6b7280', width: 70 }}>{bloque.tipo}</span>
                         <span style={{ fontSize: 12, color: '#8888a0', fontVariantNumeric: 'tabular-nums' }}>
-                          {new Date(bloque.inicio).getUTCHours().toString().padStart(2,'0')}:{new Date(bloque.inicio).getUTCMinutes().toString().padStart(2,'0')} — {new Date(bloque.fin).getUTCHours().toString().padStart(2,'0')}:{new Date(bloque.fin).getUTCMinutes().toString().padStart(2,'0')}
+                            {String(bloque.horaInicio).padStart(2,'0')}:00 — {String(bloque.horaFin).padStart(2,'0')}:00
                         </span>
-                        <span style={{ fontSize: 11, color: '#4a4a6a', marginLeft: 'auto' }}>{bloque.razon.join(', ')}</span>
+                        <span style={{ fontSize: 11, color: '#4a4a6a', marginLeft: 'auto' }}>{bloque.label}</span>
                       </div>
                     ))}
                   </div>

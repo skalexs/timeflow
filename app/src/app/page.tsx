@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
 import MotorConfig from '@/components/MotorConfig'
+import AgendaView from '@/components/AgendaView'
 
 function formatTime(date: Date) {
   return `${date.getUTCHours().toString().padStart(2,'0')}:${date.getUTCMinutes().toString().padStart(2,'0')}`
@@ -560,15 +561,39 @@ export default function TimeFlow() {
   const [tasks, setTasks] = useState<Task[]>([])
   const [tasksLoading, setTasksLoading] = useState(true)
   const [selectedDate, setSelectedDate] = useState(new Date())
-  const [activeTab, setActiveTab] = useState<'timeline' | 'calendario' | 'inbox'>('timeline')
+  const [activeTab, setActiveTab] = useState<'agenda' | 'timeline' | 'calendario' | 'inbox'>('agenda')
   const [modalOpen, setModalOpen] = useState(false)
   const [editingTask, setEditingTask] = useState<Task | null>(null)
   const [modalMode, setModalMode] = useState<'create' | 'edit'>('create')
   const [motorConfigOpen, setMotorConfigOpen] = useState(false)
+  const [theme, setTheme] = useState<'dark'|'light'|'mid'>('dark')
   const [timePickerOpen, setTimePickerOpen] = useState(false)
   const [schedulingTask, setSchedulingTask] = useState<InboxTask | null>(null)
   const [disponibilidad, setDisponibilidad] = useState<Record<string, BloqueDisp[]>>({})
   const scrollRef = useRef<HTMLDivElement>(null)
+
+  function cycleTheme() {
+    const themes: ('dark'|'light'|'mid')[] = ['dark', 'light', 'mid']
+    const next = themes[(themes.indexOf(theme) + 1) % themes.length]
+    setTheme(next)
+    document.documentElement.setAttribute('data-theme', next)
+    localStorage.setItem('timeflow_theme', next)
+  }
+
+  // Restore saved theme
+  useEffect(() => {
+    const saved = localStorage.getItem('timeflow_theme') as 'dark'|'light'|'mid'|null
+    if (saved) { setTheme(saved); document.documentElement.setAttribute('data-theme', saved) }
+  }, [])
+
+  // Agenda view navigation events
+  useEffect(() => {
+    const onNav = (e: Event) => setSelectedDate((e as CustomEvent<Date>).detail)
+    const onSel = (e: Event) => { setSelectedDate((e as CustomEvent<Date>).detail); setActiveTab('agenda') }
+    window.addEventListener('agenda-navigate', onNav)
+    window.addEventListener('agenda-select', onSel)
+    return () => { window.removeEventListener('agenda-navigate', onNav); window.removeEventListener('agenda-select', onSel) }
+  }, [])
 
   useEffect(() => {
     fetch('/api/tasks').then(r => r.json()).then(data => { setTasks(data); setTasksLoading(false) }).catch(() => setTasksLoading(false))
@@ -640,7 +665,7 @@ export default function TimeFlow() {
   const dispForToday = disponibilidad[selectedDate.toISOString().split('T')[0]] ?? []
 
   return (
-    <div style={{ background: '#0a0a0f', color: '#f0f0f5', height: '100dvh', display: 'flex', flexDirection: 'column', fontFamily: '-apple-system, BlinkMacSystemFont, sans-serif', overflow: 'hidden' }}>
+    <div data-theme={theme} style={{ background: 'var(--bg)', color: 'var(--text)', height: '100dvh', display: 'flex', flexDirection: 'column', fontFamily: '-apple-system, BlinkMacSystemFont, sans-serif' }}>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid #2a2a3d', background: '#13131a', flexShrink: 0, zIndex: 50 }}>
         <span style={{ fontSize: '15px', fontWeight: '700' }}>TimeFlow</span>
@@ -651,10 +676,11 @@ export default function TimeFlow() {
       <div style={{ display: 'flex', alignItems: 'center', padding: '10px 16px 8px', gap: 12 }}>
         <span style={{ fontSize: 18, fontWeight: 800, color: '#f0f0f5', flex: 1 }}>TimeFlow</span>
         <button onClick={() => setMotorConfigOpen(true)} title="Configurar Motor de Disponibilidad" style={{ background: '#2a2a3d', border: 'none', borderRadius: 8, color: '#8888a0', width: 34, height: 34, fontSize: 16, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>⚙️</button>
+        <button onClick={cycleTheme} title="Cambiar tema" style={{ background: '#2a2a3d', border: 'none', borderRadius: 8, color: '#8888a0', width: 34, height: 34, fontSize: 16, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>◐</button>
       </div>
       <div style={{ display: 'flex', padding: '0 16px 8px', gap: 4 }}>
-        {(['timeline', 'calendario', 'inbox'] as const).map(tab => (
-          <button key={tab} onClick={() => setActiveTab(tab)} style={{ flex: 1, padding: '8px', borderRadius: 10, border: 'none', fontSize: 13, fontWeight: 600, cursor: 'pointer', background: activeTab === tab ? '#6366f1' : '#1c1c26', color: activeTab === tab ? 'white' : '#8888a0', textTransform: 'capitalize' }}>{tab === 'timeline' ? '📅 Timeline' : tab === 'calendario' ? '📆 Calendario' : '📥 Inbox'}</button>
+        {(['agenda', 'timeline', 'calendario', 'inbox'] as const).map(tab => (
+          <button key={tab} onClick={() => setActiveTab(tab)} style={{ flex: 1, padding: '8px', borderRadius: 10, border: 'none', fontSize: 13, fontWeight: 600, cursor: 'pointer', background: activeTab === tab ? '#6366f1' : '#1c1c26', color: activeTab === tab ? 'white' : '#8888a0', textTransform: 'capitalize' }}>{tab === 'agenda' ? '📋 Agenda' : tab === 'timeline' ? '📅 Timeline' : tab === 'calendario' ? '📆 Calendario' : '📥 Inbox'}</button>
         ))}
       </div>
 
@@ -671,9 +697,18 @@ export default function TimeFlow() {
       )}
 
       {/* Content */}
-      <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+      <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', position: 'relative' }}>
+        {activeTab === 'agenda' && (
+          <AgendaView
+            tasks={tasks}
+            disponibilidad={disponibilidad}
+            selectedDate={selectedDate}
+            onTaskClick={openEdit}
+            onAddClick={openCreate}
+          />
+        )}
         {activeTab === 'timeline' && <TimelineView tasks={tasks} disponibilidad={disponibilidad} onTaskClick={openEdit} />}
-        {activeTab === 'calendario' && <CalendarMonth tasks={tasks} disponibilidad={disponibilidad} onDayClick={d => { setSelectedDate(d); setActiveTab('timeline') }} />}
+        {activeTab === 'calendario' && <CalendarMonth tasks={tasks} disponibilidad={disponibilidad} onDayClick={d => { setSelectedDate(d); setActiveTab('agenda') }} />}
         {activeTab === 'inbox' && <InboxView onScheduleTask={handleScheduleTask} />}
       </div>
 

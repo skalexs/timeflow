@@ -39,3 +39,27 @@ model Task {
 
   @@map("tasks")
 }
+
+model MotorConfig {
+  id              String   @id @default("default")
+  calendarIds      String   @default("{}") // JSON string: {"alex":"...","adriana":"...","colegios":"...","ninos":"..."}
+  promptIA         String   @default("")
+  googleConnected  Boolean  @default(false)
+  googleTokens     String   @default("{}") // JSON encrypted tokens
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  @@map("motor_config")
+}
+
+model Disponibilidad {
+  id          String   @id @default(cuid())
+  diaSemana   Int      // 0=Dom, 1=Lun, ... 6=Sáb
+  horaInicio  Int      // hora inicio (0-23)
+  horaFin     Int      // hora fin (1-24)
+  tipo        String   @default("TOTAL") // TOTAL | PARCIAL | OCUPADO
+  label       String   @default("")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@map("disponibilidad")
+}
