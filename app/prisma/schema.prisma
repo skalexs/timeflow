@@ -1,0 +1,41 @@
+// TimeFlow — Prisma Schema
+// UTC en toda la BBDD. Zona horaria del cliente se aplica solo en UI.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Task {
+  id        String   @id @default(cuid())
+  title     String
+  startTime DateTime @db.Timestamptz
+  endTime   DateTime @db.Timestamptz
+  color     String   @default("#6366f1")
+  iconId    String   @default("default")
+  done      Boolean  @default(false)
+  googleEventId String? @unique
+  // Inbox / Google Tasks sync
+  googleTaskId   String?   @unique
+  status         String    @default("pending")
+  archived       Boolean   @default(false)
+  // Metadatos enriquecidos (IA)
+  duration        Int?      // Minutos estimados
+  urgency        Int?      // 1-5
+  importance     Int?      // 1-5
+  mentalNoise    Int?      // 1-5 (carga cognitiva)
+  // Programación (para scheduler IA)
+  scheduledStart DateTime? @db.Timestamptz
+  scheduledEnd   DateTime? @db.Timestamptz
+  // Orden en vista Inbox
+  inboxOrder     Int       @default(0)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+
+  @@map("tasks")
+}

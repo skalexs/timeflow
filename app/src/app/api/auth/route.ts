@@ -1,8 +1,8 @@
 // TimeFlow - Google OAuth2 API routes
 import { NextRequest, NextResponse } from 'next/server'
 
-const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID ?? 
-const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET ?? 
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID ?? ''
+const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET ?? ''
 const REDIRECT_URI = process.env.GOOGLE_REDIRECT_URI ?? ''
 
 const SCOPES = [

@@ -1,0 +1,38 @@
+services:
+  app:
+    build:
+      context: ./app
+      dockerfile: Dockerfile
+    container_name: timeflow_app
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: postgresql://timeflow:timeflow_secret_2026@timeflow_db:5432/timeflow
+      NODE_ENV: production
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+      GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI}
+    depends_on:
+      timeflow_db:
+        condition: service_healthy
+
+  timeflow_db:
+    image: postgres:16-alpine
+    container_name: timeflow_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: timeflow
+      POSTGRES_PASSWORD: timeflow_secret_2026
+      POSTGRES_DB: timeflow
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U timeflow -d timeflow"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  pgdata:
+    driver: local
