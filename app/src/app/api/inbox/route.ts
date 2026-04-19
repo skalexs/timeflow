@@ -9,8 +9,13 @@ export async function GET() {
     const tasks = await prisma.task.findMany({
       where: {
         archived: false,
-        scheduledStart: null,
         done: false,
+        // Inbox = tareas sin hora programada O con scheduledStart=null
+        // scheduledStart=null significa "esperando a ser schedulada"
+        OR: [
+          { scheduledStart: null },
+          { startTime: null },
+        ],
       },
       orderBy: [{ urgency: 'desc' }, { inboxOrder: 'asc' }],
     })
@@ -38,8 +43,9 @@ export async function POST(req: NextRequest) {
     const task = await prisma.task.create({
       data: {
         title,
-        startTime: new Date(), // placeholder
-        endTime: new Date(),
+        // inbox tasks have no scheduled time yet
+        startTime: null,
+        endTime: null,
         urgency: urgency ?? null,
         importance: importance ?? null,
         mentalNoise: mentalNoise ?? null,

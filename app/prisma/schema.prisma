@@ -13,8 +13,8 @@ datasource db {
 model Task {
   id        String   @id @default(cuid())
   title     String
-  startTime DateTime @db.Timestamptz
-  endTime   DateTime @db.Timestamptz
+  startTime DateTime? @db.Timestamptz
+  endTime   DateTime? @db.Timestamptz
   color     String   @default("#6366f1")
   iconId    String   @default("default")
   done      Boolean  @default(false)

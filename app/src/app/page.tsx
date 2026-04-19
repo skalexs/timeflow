@@ -16,16 +16,17 @@ function toDateKey(date: Date) {
 }
 
 interface Task {
-  id?: number
+  id?: string | number
   title: string
-  startTime: string
-  endTime: string
+  startTime: string | null
+  endTime: string | null
   color: string
   iconId: string
+  done?: boolean
 }
 
 interface InboxTask {
-  id: number
+  id: string | number
   title: string
   status: string
   archived: boolean
@@ -38,10 +39,9 @@ interface InboxTask {
 
 interface BloqueDisp {
   tipo: 'TOTAL' | 'PARCIAL' | 'OCUPADO'
-  inicio: string
-  fin: string
-  razon: string[]
-  color: string
+  horaInicio: number
+  horaFin: number
+  label: string
 }
 
 const ICONS = ['📋','📅','💡','🏃','🎯','🎨','🎮','💤','📞','🧘','🏋️','🎬','💻','📚','💡','🔧']
@@ -55,8 +55,8 @@ function timeToDate(timeStr: string) {
 }
 
 function TaskModal({ isOpen, onClose, onSave, onDelete, initialTask, mode }: {
-  isOpen: boolean; onClose: () => void; onSave: (task: Partial<Task>, id?: number) => void
-  onDelete?: (id: number) => void; initialTask?: Task; mode: 'create' | 'edit'
+  isOpen: boolean; onClose: () => void; onSave: (task: Partial<Task>, id?: string | number) => void
+  onDelete?: (id: string | number) => void; initialTask?: Task; mode: 'create' | 'edit'
 }) {
   const [form, setForm] = useState({ title: '', startTime: '09:00', endTime: '10:00', color: '#6366f1', iconId: '📋' })
   const [saving, setSaving] = useState(false)
@@ -65,7 +65,7 @@ function TaskModal({ isOpen, onClose, onSave, onDelete, initialTask, mode }: {
   const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
-    if (initialTask) setForm({ title: initialTask.title, startTime: initialTask.startTime, endTime: initialTask.endTime, color: initialTask.color, iconId: initialTask.iconId })
+    if (initialTask) setForm({ title: initialTask.title, startTime: initialTask.startTime ?? '09:00', endTime: initialTask.endTime ?? '10:00', color: initialTask.color, iconId: initialTask.iconId })
   }, [initialTask])
 
   async function handleSubmit(e: React.FormEvent) {
@@ -170,7 +170,7 @@ function CalendarMonth({ tasks, disponibilidad, onDayClick }: { tasks: Task[]; d
     const bloques = disponibilidad[key] ?? []
     if (bloques.length === 0) return 'transparent'
     let total = 0
-    for (const b of bloques) if (b.tipo === 'TOTAL') total += (new Date(b.fin).getTime() - new Date(b.inicio).getTime()) / 60000
+    for (const b of bloques) if (b.tipo === 'TOTAL') total += (b.horaFin - b.horaInicio)
     if (total >= 240) return '#10b981'
     if (total >= 60) return '#10b98188'
     const tipos = { TOTAL: 0, PARCIAL: 0, OCUPADO: 0 }
@@ -184,6 +184,7 @@ function CalendarMonth({ tasks, disponibilidad, onDayClick }: { tasks: Task[]; d
   function getTasksForDay(d: Date) {
     const key = toDateKey(d)
     return tasks.filter(t => {
+      if (!t.startTime || !t.endTime) return false
       const s = new Date(t.startTime), e = new Date(t.endTime)
       return (s.getFullYear() === d.getFullYear() && s.getMonth() === d.getMonth() && s.getDate() === d.getDate()) ||
              (e.getFullYear() === d.getFullYear() && e.getMonth() === d.getMonth() && e.getDate() === d.getDate())
@@ -220,40 +221,21 @@ function CalendarMonth({ tasks, disponibilidad, onDayClick }: { tasks: Task[]; d
 function TimelineView({ tasks, disponibilidad, onTaskClick }: { tasks: Task[]; disponibilidad: Record<string, BloqueDisp[]>; onTaskClick: (task: Task) => void }) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const [selected, setSelected] = useState(new Date())
-  const now = useRef(new Date())
-  const [nowPos, setNowPos] = useState(0)
 
-  useEffect(() => {
-    now.current = new Date()
-    const min = now.current.getHours() * 60 + now.current.getMinutes()
-    setNowPos(min / 1440 * 100)
-    const interval = setInterval(() => {
-      now.current = new Date()
-      setNowPos((now.current.getHours() * 60 + now.current.getMinutes()) / 1440 * 100)
-    }, 30000)
-    return () => clearInterval(interval)
-  }, [])
-
-  useEffect(() => {
-    if (scrollRef.current) {
-      const el = scrollRef.current
-      const scrollTop = Math.max(0, (nowPos / 100) * el.scrollHeight - el.clientHeight * 0.4)
-      el.scrollTop = scrollTop
-    }
-  }, [nowPos])
-
-  const tasksForDay = tasks.filter(t => {
-    const d = toDateKey(new Date(t.startTime))
-    return d === toDateKey(selected)
-  })
+  // isToday computed directly — no state, no interval
 
   const disponibilidadForDay = disponibilidad[selected.toISOString().split('T')[0]] ?? []
 
+  const tasksForDay = tasks.filter(t => {
+    const d = toDateKey(new Date(t.startTime ?? 0))
+    return d === toDateKey(selected)
+  })
+
   const hours = Array.from({ length: 24 }, (_, i) => i)
   const dayLabel = selected.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })
-  const nowMinutes = 60 * now.current.getHours() + now.current.getMinutes()
-
-  const isToday = toDateKey(selected) === toDateKey(now.current)
+  const now = new Date()
+  const nowMinutes = 60 * now.getHours() + now.getMinutes()
+  const isToday = toDateKey(selected) === toDateKey(now)
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: '#0a0a0f' }}>
@@ -261,7 +243,7 @@ function TimelineView({ tasks, disponibilidad, onTaskClick }: { tasks: Task[]; d
         <button onClick={() => setSelected(d => new Date(d.getTime() - 86400000))} style={{ background: '#1c1c26', border: 'none', borderRadius: '10px', color: '#f0f0f5', width: '36px', height: '36px', fontSize: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>&lt;</button>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px' }}>
           <span style={{ fontSize: '14px', fontWeight: '700', color: '#f0f0f5', textTransform: 'capitalize' }}>{dayLabel}</span>
-          <button onClick={() => setSelected(new Date(now.current.getFullYear(), now.current.getMonth(), now.current.getDate()))} style={{ background: 'none', border: 'none', fontSize: '11px', color: '#6366f1', cursor: 'pointer', fontWeight: 600 }}>Hoy</button>
+          <button onClick={() => setSelected(new Date())} style={{ background: 'none', border: 'none', fontSize: '11px', color: '#6366f1', cursor: 'pointer', fontWeight: 600 }}>Hoy</button>
         </div>
         <button onClick={() => setSelected(d => new Date(d.getTime() + 86400000))} style={{ background: '#1c1c26', border: 'none', borderRadius: '10px', color: '#f0f0f5', width: '36px', height: '36px', fontSize: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>&gt;</button>
       </div>
@@ -292,8 +274,8 @@ function TimelineView({ tasks, disponibilidad, onTaskClick }: { tasks: Task[]; d
 
             {/* Availability bands */}
             {disponibilidadForDay.map((bloque, i) => {
-              const startMin = (new Date(bloque.inicio).getUTCHours() * 60 + new Date(bloque.inicio).getUTCMinutes())
-              const endMin = (new Date(bloque.fin).getUTCHours() * 60 + new Date(bloque.fin).getUTCMinutes())
+              const startMin = bloque.horaInicio * 60
+              const endMin = bloque.horaFin * 60
               const top = startMin / 1440 * 100
               const height = Math.max((endMin - startMin) / 1440 * 100, 0.1)
               const colors = { TOTAL: '#10b98133', PARCIAL: '#f59e0b33', OCUPADO: '#6b728022' }
@@ -303,14 +285,11 @@ function TimelineView({ tasks, disponibilidad, onTaskClick }: { tasks: Task[]; d
               )
             })}
 
-            {/* Now indicator */}
-            {isToday && <div style={{ position: 'absolute', top: `${nowPos}%`, left: 0, right: 0, height: '2px', background: '#6366f1', opacity: 0.85, boxShadow: '0 0 8px #6366f1', zIndex: 5, pointerEvents: 'none' }} />}
-
             {/* Tasks */}
-            {tasksForDay.map(task => {
-              const startMin = toMinutes(new Date(task.startTime))
-              const endMin = toMinutes(new Date(task.endTime))
-              const duration = Math.round((new Date(task.endTime).getTime() - new Date(task.startTime).getTime()) / 60000)
+            {tasksForDay.filter(t => t.startTime && t.endTime).map(task => {
+              const startMin = toMinutes(new Date(task.startTime!))
+              const endMin = toMinutes(new Date(task.endTime!))
+              const duration = Math.round((new Date(task.endTime!).getTime() - new Date(task.startTime!).getTime()) / 60000)
               if (duration <= 0) return null
               const top = startMin / 1440 * 100
               const height = Math.max(duration / 1440 * 100, 0.8)
@@ -319,7 +298,7 @@ function TimelineView({ tasks, disponibilidad, onTaskClick }: { tasks: Task[]; d
                 <div key={task.id} onClick={() => onTaskClick(task)} style={{ position: 'absolute', top: `${top}%`, height: `${height}%`, left: '3px', right: '3px', borderRadius: '8px', background: isPast ? '#14141c' : '#1c1c26', borderLeft: `4px solid ${isPast ? task.color + '88' : task.color}`, overflow: 'hidden', cursor: 'pointer', opacity: isPast ? 0.6 : 1, zIndex: 10, boxShadow: '0 2px 12px rgba(0,0,0,0.4)', backdropFilter: 'blur(8px)', willChange: 'transform' }}>
                   <div style={{ padding: '4px 6px', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'flex-start', gap: '2px' }}>
                     <span style={{ fontSize: '11px', fontWeight: '600', color: isPast ? '#8888a0' : '#f0f0f5', lineHeight: 1.2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{task.iconId} {task.title}</span>
-                    <span style={{ fontSize: '9px', color: '#8888a0', fontVariantNumeric: 'tabular-nums' }}>{formatTime(new Date(task.startTime))} - {formatTime(new Date(task.endTime))}</span>
+                    <span style={{ fontSize: '9px', color: '#8888a0', fontVariantNumeric: 'tabular-nums' }}>{formatTime(new Date(task.startTime!))} - {formatTime(new Date(task.endTime!))}</span>
                   </div>
                 </div>
               )
@@ -329,8 +308,8 @@ function TimelineView({ tasks, disponibilidad, onTaskClick }: { tasks: Task[]; d
           {/* Heatmap Strip */}
           <div style={{ position: 'absolute', top: 0, left: 0, width: '4px', height: '100%', zIndex: 0, overflow: 'hidden' }}>
             {disponibilidadForDay.map((bloque, i) => {
-              const startMin = (new Date(bloque.inicio).getUTCHours() * 60 + new Date(bloque.inicio).getUTCMinutes())
-              const endMin = (new Date(bloque.fin).getUTCHours() * 60 + new Date(bloque.fin).getUTCMinutes())
+              const startMin = bloque.horaInicio * 60
+              const endMin = bloque.horaFin * 60
               const top = startMin / 1440 * 100
               const height = Math.max((endMin - startMin) / 1440 * 100, 0.1)
               const colors = { TOTAL: '#10b981E6', PARCIAL: '#f59e0b99', OCUPADO: '#6b728066' }
@@ -511,9 +490,7 @@ function TimePickerModal({ isOpen, taskTitle, taskNoise, disponibilidad, onConfi
   const endDate = new Date(selectedDate.getTime() + duration * 60000)
 
   const matchingBloque = disponibilidad.find(b => {
-    const startH = new Date(b.inicio).getUTCHours()
-    const endH = new Date(b.fin).getUTCHours()
-    return startH <= hour && endH > hour
+    return b.horaInicio <= hour && b.horaFin > hour
   })
 
   const warning = matchingBloque?.tipo === 'OCUPADO' ? '⚠️ Esta hora está marcada como OCUPADA. ¿Seguir?' : matchingBloque?.tipo === 'PARCIAL' && (taskNoise ?? 3) >= 4 ? '⚠️ Tarea requiere foco pero hora es PARCIAL. ¿Seguir?' : null
@@ -597,8 +574,6 @@ export default function TimeFlow() {
 
   useEffect(() => {
     fetch('/api/tasks').then(r => r.json()).then(data => { setTasks(data); setTasksLoading(false) }).catch(() => setTasksLoading(false))
-    const interval = setInterval(() => setSelectedDate(new Date()), 30000)
-    return () => clearInterval(interval)
   }, [])
 
   useEffect(() => {
@@ -618,7 +593,7 @@ export default function TimeFlow() {
     }).catch(() => {})
   }, [])
 
-  async function handleSaveTask(task: Partial<Task>, id?: number) {
+  async function handleSaveTask(task: Partial<Task>, id?: string | number) {
     if (id) {
       const res = await fetch(`/api/tasks/${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(task) })
       const updated = await res.json()
@@ -630,7 +605,7 @@ export default function TimeFlow() {
     }
   }
 
-  async function handleDeleteTask(id: number) {
+  async function handleDeleteTask(id: string | number) {
     await fetch(`/api/tasks/${id}`, { method: 'DELETE' })
     setTasks(ts => ts.filter(t => t.id !== id))
   }
@@ -665,7 +640,7 @@ export default function TimeFlow() {
   const dispForToday = disponibilidad[selectedDate.toISOString().split('T')[0]] ?? []
 
   return (
-    <div data-theme={theme} style={{ background: 'var(--bg)', color: 'var(--text)', height: '100dvh', display: 'flex', flexDirection: 'column', fontFamily: '-apple-system, BlinkMacSystemFont, sans-serif' }}>
+    <div data-theme={theme} style={{ background: 'var(--bg)', color: 'var(--text)', height: '100dvh', display: 'flex', flexDirection: 'column', fontFamily: '-apple-system, BlinkMacSystemFont, sans-serif', paddingTop: 'env(safe-area-inset-top, 0px)', paddingBottom: 'env(safe-area-inset-bottom, 0px)', paddingLeft: 'env(safe-area-inset-left, 0px)', paddingRight: 'env(safe-area-inset-right, 0px)' }}>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid #2a2a3d', background: '#13131a', flexShrink: 0, zIndex: 50 }}>
         <span style={{ fontSize: '15px', fontWeight: '700' }}>TimeFlow</span>

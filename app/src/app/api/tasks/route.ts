@@ -23,15 +23,15 @@ export async function POST(req: NextRequest) {
     const body = await req.json()
     const { title, startTime, endTime, color, iconId, duration, urgency, importance, mentalNoise, googleEventId } = body
 
-    if (!title || !startTime || !endTime) {
-      return NextResponse.json({ error: 'title, startTime, endTime required' }, { status: 400 })
+    if (!title) {
+      return NextResponse.json({ error: 'title required' }, { status: 400 })
     }
 
     const task = await prisma.task.create({
       data: {
         title,
-        startTime: new Date(startTime),
-        endTime: new Date(endTime),
+        startTime: startTime ? new Date(startTime) : null,
+        endTime: endTime ? new Date(endTime) : null,
         color: color || '#6366f1',
         iconId: iconId || 'default',
         duration: duration || null,
