@@ -182,19 +182,7 @@ export async function GET(req: NextRequest) {
           const adrianaBusy = busyData[adrianaId] ?? []
           const colegiosBusy = busyData[colegiosId] ?? []
 
-          // Log detailed busy intervals for debugging
-          if (colegiosBusy.length > 0) {
-            console.error('[disponibilidad] ' + key + ' school events:')
-            colegiosBusy.forEach((b, i) => {
-              console.error('  event' + i + ' startUTC=' + b.start.toISOString() + ' endUTC=' + b.end.toISOString())
-            })
-          }
-          console.error(
-            '[disponibilidad] ' + key +
-            ' | alex busy:' + alexBusy.length +
-            ' | adriana busy:' + adrianaBusy.length +
-            ' | colegios busy:' + colegiosBusy.length,
-          )
+
 
           const slots: Array<{ hour: number; tipo: SlotType }> = []
 

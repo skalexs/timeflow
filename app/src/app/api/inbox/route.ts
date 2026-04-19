@@ -72,7 +72,11 @@ export async function PATCH(req: NextRequest) {
     if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 })
 
     const updateData: Record<string, unknown> = {}
-    if (status !== undefined) updateData.status = status
+    if (status !== undefined) {
+      updateData.status = status
+      if (status === 'completed') updateData.done = true
+      else if (status === 'pending') updateData.done = false
+    }
     if (archived !== undefined) updateData.archived = archived
     if (urgency !== undefined) updateData.urgency = urgency
     if (importance !== undefined) updateData.importance = importance

@@ -168,29 +168,36 @@ export async function syncGoogleToLocal(req: NextRequest): Promise<SyncResult> {
 
 /**
  * Mark task done in Google (call after marking done locally).
+ * Token is always fetched from DB (motor_config.googleTokens).
  */
 export async function syncLocalDoneToGoogle(taskId: string): Promise<void> {
-  // We need the token — read from motor_config refresh
-  let token: string | null = null
   try {
-    const currentToken = await getToken({} as NextRequest)
-    token = currentToken
-  } catch { /* no cookie in this context */ }
-
-  if (!token) {
-    // Fallback: try direct from motor_config
     const cfg = await prisma.motorConfig.findUnique({ where: { id: 'default' } })
     if (!cfg?.googleTokens) return
     const stored = JSON.parse(cfg.googleTokens)
-    if (!stored.access_token) return
-    token = stored.access_token
-  }
+    let token = stored.access_token ?? null
 
-  const task = await prisma.task.findUnique({ where: { id: taskId } })
-  if (!task?.googleTaskId || !task.done || !token) return
+    // Try refresh if expired
+    if (!token || (stored.expiry_date && Date.now() > stored.expiry_date - 60000)) {
+      if (stored.refresh_token) {
+        const refreshed = await refreshAccessToken(stored.refresh_token)
+        if (refreshed) {
+          token = refreshed.access_token
+          await prisma.motorConfig.update({
+            where: { id: 'default' },
+            data: { googleTokens: JSON.stringify({ ...stored, access_token: token, expiry_date: Date.now() + refreshed.expires_in * 1000 }) },
+          })
+        }
+      }
+    }
 
-  try {
-    await markGoogleTaskDone(token as string, task.googleTaskId!)
+    if (!token) return
+
+    const task = await prisma.task.findUnique({ where: { id: taskId } })
+    if (!task?.googleTaskId || !task.done) return
+
+    await markGoogleTaskDone(token, task.googleTaskId)
+    console.error('[GoogleTasksSync] marked done in Google:', task.googleTaskId)
   } catch (e) {
     console.error('[GoogleTasksSync] mark done error:', String(e))
   }

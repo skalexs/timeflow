@@ -78,6 +78,20 @@ export default function MotorConfig({ onClose }: { onClose: () => void }) {
     setLoadingCalendars(false)
   }
 
+  async function handleDisconnect() {
+    await fetch('/api/auth', { method: 'DELETE' })
+    setConnected(false)
+    setGoogleInfo({})
+    setGoogleCalendars([])
+    try {
+      await fetch('/api/motor-config', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ googleConnected: false, calendarIds: { alex: '', adriana: '', colegios: '', ninos: '' } }),
+      })
+    } catch {}
+  }
+
   async function handleLogin() {
     try {
       const res = await fetch('/api/auth')
@@ -220,6 +234,7 @@ export default function MotorConfig({ onClose }: { onClose: () => void }) {
                   <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: '#10b981' }}>Conectado</p>
                   <p style={{ margin: 0, fontSize: 11, color: '#6b7280' }}>{googleInfo.email ?? 'Google cuenta'}</p>
                 </div>
+                <button onClick={handleDisconnect} style={{ marginLeft: 'auto', padding: '6px 12px', background: '#2a2a3d', color: '#8888a0', border: 'none', borderRadius: 8, fontSize: 11, cursor: 'pointer' }}>Desconectar</button>
               </div>
             ) : (
               <div>
