@@ -24,8 +24,8 @@ interface BloqueDisp {
 
 const START_HOUR = 4   // grid starts at 04:00
 const END_HOUR   = 23  // grid ends at 23:00
-const HOUR_COUNT = END_HOUR - START_HOUR  // 19 hours
-const TOTAL_MINS = HOUR_COUNT * 60       // 1140 minutes
+const HALF_HOURS = (END_HOUR - START_HOUR) * 2  // 38 half-hour slots
+const TOTAL_MINS = HALF_HOURS * 30              // 1140 minutes
 
 const TIPO_STYLES: Record<string, { bg: string; border: string; textColor: string }> = {
   TOTAL:   { bg: 'rgba(16,185,129,0.10)', border: '#10b981', textColor: '#10b981' },
@@ -44,16 +44,16 @@ function minsFromHour(h: number, m = 0) {
 }
 
 function pctInGrid(minutes: number) {
-  return Math.max(0, Math.min(100, ((minutes - START_HOUR * 60) / TOTAL_MINS) * 100))
+  return Math.max(0, Math.min(100, (minutes / TOTAL_MINS) * 100))
 }
 
 const WEEK_DAY = (d: Date) => ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'][d.getDay()]
 
 // ─── NowIndicator — isolated RAF loop, only re-renders itself ───────────────
 
-interface NowIndicatorProps { hourCount?: number }
+interface NowIndicatorProps { slotCount?: number }
 
-const NowIndicator = memo(function NowIndicator({ hourCount = HOUR_COUNT }: NowIndicatorProps) {
+const NowIndicator = memo(function NowIndicator({ slotCount = HALF_HOURS }: NowIndicatorProps) {
   const ref = useRef<HTMLDivElement>(null)
   const rafRef = useRef<number>(0)
   const [, forceUpdate] = useState(0)
@@ -65,10 +65,9 @@ const NowIndicator = memo(function NowIndicator({ hourCount = HOUR_COUNT }: NowI
       const m = now.getUTCMinutes()
       const totalMins = h * 60 + m
       const startMins = START_HOUR * 60
-      const endMins = END_HOUR * 60
 
-      if (totalMins >= startMins && totalMins <= endMins) {
-        const pct = ((totalMins - startMins) / (endMins - startMins)) * 100
+      if (totalMins >= startMins && totalMins <= TOTAL_MINS) {
+        const pct = (totalMins / TOTAL_MINS) * 100
         if (ref.current) {
           ref.current.style.top = `${pct}%`
           ref.current.style.display = 'block'
@@ -210,7 +209,7 @@ function AgendaViewInner({ tasks, disponibilidad, selectedDate, onTaskClick, onA
   const gradientBg = buildGradient(dispSelected)
 
   // Build hour markers
-  const hours = Array.from({ length: HOUR_COUNT }, (_, i) => START_HOUR + i)
+  const slots = Array.from({ length: HALF_HOURS }, (_, i) => ({ h: START_HOUR + Math.floor(i / 2), m: (i % 2) * 30 }))
 
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
@@ -284,17 +283,19 @@ function AgendaViewInner({ tasks, disponibilidad, selectedDate, onTaskClick, onA
 
         <div style={{ display: 'flex', minHeight: '100%', position: 'relative' }}>
 
-          {/* ── Hours column ── */}
+          {/* ── Half-hour slots column ── */}
           <div style={{ width: 44, flexShrink: 0, position: 'relative' }}>
-            {hours.map(h => (
-              <div key={h} style={{ height: `${100 / HOUR_COUNT}%`, position: 'relative' }}>
-                <span style={{
-                  position: 'absolute', top: -6, right: 6,
-                  fontSize: 10, color: 'var(--text-muted)',
-                  fontVariantNumeric: 'tabular-nums',
-                }}>
-                  {h.toString().padStart(2, '0')}:00
-                </span>
+            {slots.map((slot, i) => (
+              <div key={i} style={{ height: `${100 / HALF_HOURS}%`, position: 'relative' }}>
+                {slot.m === 0 && (
+                  <span style={{
+                    position: 'absolute', top: -6, right: 6,
+                    fontSize: 10, color: 'var(--text-muted)',
+                    fontVariantNumeric: 'tabular-nums',
+                  }}>
+                    {slot.h.toString().padStart(2, '0')}:00
+                  </span>
+                )}
               </div>
             ))}
           </div>
@@ -316,10 +317,10 @@ function AgendaViewInner({ tasks, disponibilidad, selectedDate, onTaskClick, onA
                   background: colGradient,
                   cursor: 'pointer',
                 }}>
-                {/* Hour lines */}
-                {hours.map(h => (
-                  <div key={h} style={{
-                    height: `${100 / HOUR_COUNT}%`,
+                {/* Half-hour slot lines */}
+                {slots.map((slot, i) => (
+                  <div key={i} style={{
+                    height: `${100 / HALF_HOURS}%`,
                     borderBottom: '1px solid var(--border)',
                     boxSizing: 'border-box',
                   }} />

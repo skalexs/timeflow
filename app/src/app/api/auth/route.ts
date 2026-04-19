@@ -1,6 +1,8 @@
 // TimeFlow - Google OAuth2 API routes
 import { NextRequest, NextResponse } from 'next/server'
+import { PrismaClient } from '@prisma/client'
 
+const prisma = new PrismaClient()
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID ?? ''
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET ?? ''
 const REDIRECT_URI = process.env.GOOGLE_REDIRECT_URI ?? ''
@@ -11,6 +13,7 @@ const SCOPES = [
   'https://www.googleapis.com/auth/userinfo.profile',
   'https://www.googleapis.com/auth/calendar.readonly',
   'https://www.googleapis.com/auth/calendar.events',
+  'https://www.googleapis.com/auth/tasks',
 ].join(' ')
 
 export async function GET(req: NextRequest) {
@@ -108,6 +111,36 @@ export async function POST(req: NextRequest) {
       response.cookies.set('google_refresh_token', refresh_token, {
         httpOnly: true, secure: true, sameSite: 'lax', maxAge: 60 * 60 * 24 * 30,
       })
+    }
+
+    // Also persist tokens to motor_config so background services can refresh them
+    try {
+      const stored = await prisma.motorConfig.findUnique({ where: { id: 'default' } })
+      const existingTokens = stored?.googleTokens ? JSON.parse(stored.googleTokens) : {}
+      await prisma.motorConfig.upsert({
+        where: { id: 'default' },
+        create: {
+          id: 'default',
+          calendarIds: stored?.calendarIds ?? '{}',
+          promptIA: stored?.promptIA ?? '',
+          googleConnected: true,
+          googleTokens: JSON.stringify({
+            access_token,
+            refresh_token: refresh_token ?? existingTokens.refresh_token ?? '',
+            expiry_date: Date.now() + (expires_in ?? 3600) * 1000,
+          }),
+        },
+        update: {
+          googleConnected: true,
+          googleTokens: JSON.stringify({
+            access_token,
+            refresh_token: refresh_token ?? existingTokens.refresh_token ?? '',
+            expiry_date: Date.now() + (expires_in ?? 3600) * 1000,
+          }),
+        },
+      })
+    } catch (e) {
+      console.error('[auth] failed to save tokens to motor_config:', e)
     }
 
     return response

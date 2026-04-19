@@ -138,7 +138,12 @@ export default function MotorConfig({ onClose }: { onClose: () => void }) {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          calendarIds: selectedCalendars,
+          calendarIds: {
+            alex: selectedCalendars.alex.id,
+            adriana: selectedCalendars.adriana.id,
+            colegios: selectedCalendars.colegios.id,
+            ninos: selectedCalendars.ninosCasa.id,
+          },
           promptIA: aiPrompt,
           googleConnected: connected,
         }),
@@ -157,11 +162,16 @@ export default function MotorConfig({ onClose }: { onClose: () => void }) {
       .then(r => r.json())
       .then(data => {
         if (data.calendarIds) {
+          function getId(val: unknown): string {
+            if (typeof val === 'string') return val
+            if (typeof val === 'object' && val !== null && 'id' in val) return getId((val as Record<string, unknown>).id)
+            return ''
+          }
           setSelectedCalendars({
-            alex: { id: data.calendarIds.alex ?? '', label: 'Alex (Trabajo)', tipo: 'trabajo' },
-            adriana: { id: data.calendarIds.adriana ?? '', label: 'Adriana (Trabajo)', tipo: 'trabajo' },
-            colegios: { id: data.calendarIds.colegios ?? '', label: 'Colegios', tipo: 'escuela' },
-            ninosCasa: { id: data.calendarIds.ninos ?? '', label: 'Niños y Casa', tipo: 'familia' },
+            alex: { id: getId(data.calendarIds.alex), label: 'Alex (Trabajo)', tipo: 'trabajo' },
+            adriana: { id: getId(data.calendarIds.adriana), label: 'Adriana (Trabajo)', tipo: 'trabajo' },
+            colegios: { id: getId(data.calendarIds.colegios), label: 'Colegios', tipo: 'escuela' },
+            ninosCasa: { id: getId(data.calendarIds.ninos), label: 'Niños y Casa', tipo: 'familia' },
           })
         }
         if (data.promptIA) setAiPrompt(data.promptIA)

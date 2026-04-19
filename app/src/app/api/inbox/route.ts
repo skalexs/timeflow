@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { PrismaClient } from '@prisma/client'
+import { syncLocalDoneToGoogle } from '@/services/GoogleTasksSync'
 
 const prisma = new PrismaClient()
 
@@ -86,8 +87,15 @@ export async function PATCH(req: NextRequest) {
     if (rest.endTime) updateData.endTime = new Date(rest.endTime)
     if (rest.title) updateData.title = rest.title
     if (rest.color) updateData.color = rest.color
+    if (rest.googleTaskId !== undefined) updateData.googleTaskId = rest.googleTaskId
 
     const task = await prisma.task.update({ where: { id }, data: updateData })
+
+    // Two-way sync: if marked done AND has googleTaskId → update in Google
+    if (updateData.done === true && task.googleTaskId) {
+      syncLocalDoneToGoogle(id).catch(console.error)
+    }
+
     return NextResponse.json(task)
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : String(e)

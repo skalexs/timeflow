@@ -231,7 +231,7 @@ function TimelineView({ tasks, disponibilidad, onTaskClick }: { tasks: Task[]; d
     return d === toDateKey(selected)
   })
 
-  const hours = Array.from({ length: 24 }, (_, i) => i)
+  const slots = Array.from({ length: 48 }, (_, i) => ({ h: Math.floor(i / 2), m: (i % 2) * 30 }))
   const dayLabel = selected.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })
   const now = new Date()
   const nowMinutes = 60 * now.getHours() + now.getMinutes()
@@ -258,19 +258,21 @@ function TimelineView({ tasks, disponibilidad, onTaskClick }: { tasks: Task[]; d
 
       <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', position: 'relative' }}>
         <div style={{ display: 'grid', gridTemplateColumns: '30px 1fr', position: 'relative', height: '1440px' }}>
-          {/* Hour labels */}
+          {/* Half-hour slot labels */}
           <div style={{ position: 'relative', height: '1440px' }}>
-            {hours.map(h => (
-              <div key={h} style={{ position: 'absolute', top: `${(h / 24) * 100}%`, left: 0, right: 0, transform: 'translateY(-50%)' }}>
-                <span style={{ fontSize: '10px', color: '#8888a0', fontVariantNumeric: 'tabular-nums', display: 'block', textAlign: 'right', paddingRight: '4px' }}>{h.toString().padStart(2, '0')}:00</span>
+            {slots.map((slot, i) => (
+              <div key={i} style={{ position: 'absolute', top: `${(i / 48) * 100}%`, left: 0, right: 0, transform: 'translateY(-50%)' }}>
+                {slot.m === 0 && (
+                  <span style={{ fontSize: '10px', color: '#8888a0', fontVariantNumeric: 'tabular-nums', display: 'block', textAlign: 'right', paddingRight: '4px' }}>{slot.h.toString().padStart(2, '0')}:00</span>
+                )}
               </div>
             ))}
           </div>
 
           {/* Column */}
           <div style={{ position: 'relative', height: '1440px', borderLeft: '1px solid #2a2a3d' }}>
-            {/* Hour lines */}
-            {hours.map(h => <div key={h} style={{ position: 'absolute', top: `${(h / 24) * 100}%`, left: 0, right: 0, height: '1px', background: '#2a2a3d' }} />)}
+            {/* Half-hour slot lines */}
+            {slots.map((slot, i) => <div key={i} style={{ position: 'absolute', top: `${(i / 48) * 100}%`, left: 0, right: 0, height: '1px', background: '#2a2a3d' }} />)}
 
             {/* Availability bands */}
             {disponibilidadForDay.map((bloque, i) => {
@@ -377,6 +379,7 @@ function InboxView({ onTaskClick, onScheduleTask }: { onTaskClick?: (task: Inbox
   const [newImportance, setNewImportance] = useState(3)
   const [newNoise, setNewNoise] = useState(3)
   const [newDuration, setNewDuration] = useState(30)
+  const [newGoogleTask, setNewGoogleTask] = useState(false)
 
   useEffect(() => { fetchTasks() }, [])
 
@@ -391,9 +394,15 @@ function InboxView({ onTaskClick, onScheduleTask }: { onTaskClick?: (task: Inbox
   async function createTask() {
     const title = newTitle.trim()
     if (!title) return
-    await fetch('/api/inbox', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title, urgency: newUrgency, importance: newImportance, mentalNoise: newNoise, duration: newDuration }) })
+    // Create locally first
+    const r = await fetch('/api/inbox', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title, urgency: newUrgency, importance: newImportance, mentalNoise: newNoise, duration: newDuration }) })
+    const created = await r.json()
+    // If "add to Google" checked, create in Google and link
+    if (newGoogleTask && created.id) {
+      await fetch('/api/tasks/sync-google', { method: 'POST' }).catch(() => {})
+    }
     await fetchTasks()
-    setShowForm(false); setNewTitle(''); setNewUrgency(3); setNewImportance(3); setNewNoise(3); setNewDuration(30)
+    setShowForm(false); setNewTitle(''); setNewUrgency(3); setNewImportance(3); setNewNoise(3); setNewDuration(30); setNewGoogleTask(false)
   }
 
   const filtered = tasks.filter(t => {
@@ -414,9 +423,14 @@ function InboxView({ onTaskClick, onScheduleTask }: { onTaskClick?: (task: Inbox
     setSelected(null)
   }
 
+  // Sync Google Tasks → Local on mount
+  useEffect(() => {
+    fetch('/api/tasks/sync-google', { method: 'POST' }).catch(() => {})
+  }, [])
+
   return (
-    <div style={{ flex: 1, overflowY: 'auto', padding: '0 0 80px' }}>
-      <div style={{ padding: '12px 16px' }}>
+    <div style={{ flex: 1, overflowY: 'auto', padding: '0 0 80px', paddingTop: 'env(safe-area-inset-top)' }}>
+      <div style={{ padding: '12px 16px', paddingTop: 'calc(12px + env(safe-area-inset-top))' }}>
         <input type="text" placeholder="Buscar tarea..." value={search} onChange={e => setSearch(e.target.value)} style={{ width: '100%', background: '#1c1c26', border: '1px solid #2a2a3d', borderRadius: 10, padding: '10px 14px', fontSize: 13, color: '#f0f0f5', outline: 'none', boxSizing: 'border-box' }} />
       </div>
       <div style={{ display: 'flex', gap: 6, padding: '0 16px 12px', overflowX: 'auto' }}>
@@ -464,6 +478,10 @@ function InboxView({ onTaskClick, onScheduleTask }: { onTaskClick?: (task: Inbox
               const setVal = key === 'urgency' ? setNewUrgency : key === 'importance' ? setNewImportance : key === 'mentalNoise' ? setNewNoise : setNewDuration
               return <Slider key={key} label={label} value={val} onChange={setVal} color={color} suffix={suffix} min={min} max={max} />
             })}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+              <input type="checkbox" id="googleTaskCheck" checked={newGoogleTask} onChange={e => setNewGoogleTask(e.target.checked)} style={{ accentColor: '#6366f1', width: 16, height: 16 }} />
+              <label htmlFor="googleTaskCheck" style={{ fontSize: 12, color: '#8888a0', cursor: 'pointer' }}>Añadir también a Google Tasks</label>
+            </div>
             <div style={{ display: 'flex', gap: 10 }}>
               <button onClick={() => setShowForm(false)} style={{ flex: 1, padding: '12px', background: '#2a2a3d', color: '#8888a0', border: 'none', borderRadius: 10, fontSize: 13, cursor: 'pointer' }}>Cancelar</button>
               <button onClick={createTask} style={{ flex: 1, padding: '12px', background: '#6366f1', color: 'white', border: 'none', borderRadius: 10, fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>Crear</button>

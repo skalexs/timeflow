@@ -5,61 +5,75 @@ const prisma = new PrismaClient()
 
 // ─── Google Calendar API helpers ────────────────────────────────────────────
 
-async function googleFetch(endpoint: string, token: string, signal?: AbortSignal) {
-  const url = endpoint.startsWith('http')
-    ? endpoint
-    : `https://www.googleapis.com/calendar/v3${endpoint}`
+async function googleFetch(endpoint: string, token: string, options?: RequestInit) {
+  const url = `https://www.googleapis.com/calendar/v3${endpoint}`
   const resp = await fetch(url, {
-    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-    signal,
+    ...options,
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+      ...options?.headers,
+    },
   })
   if (!resp.ok) throw new Error(`Google API ${resp.status}: ${await resp.text()}`)
   return resp.json()
 }
 
-// ─── Fetch busy intervals from Google Calendar freebusy API ────────────────
-// Returns array of [startUnix, endUnix] for the given calendar in the time range
-async function fetchCalendarBusy(
-  calendarId: string,
+// ─── Fetch busy intervals for multiple calendars in one FreeBusy call ───────
+// Returns { alex: [{start, end}], adriana: [...], colegios: [...] }
+async function fetchFreeBusy(
+  calendarIds: { alex: string; adriana: string; colegios: string },
   token: string,
-  timeMin: string, // ISO string
+  timeMin: string,
   timeMax: string,
-): Promise<Array<{ start: Date; end: Date }>> {
-  try {
-    const data = await googleFetch('/freebusy', token, AbortSignal.timeout(8000))
-    const calData = data.calendars?.[calendarId]
-    if (!calData) return []
-    return (calData.busy ?? []).map((b: { start: string; end: string }) => ({
-      start: new Date(b.start),
-      end: new Date(b.end),
-    }))
-  } catch {
-    // If freebusy fails for a calendar (e.g. no access), treat as empty (all free)
-    return []
+): Promise<Record<string, Array<{ start: Date; end: Date }>>> {
+  const allIds = Object.entries(calendarIds)
+    .filter(([, id]) => id)
+    .map(([, id]) => id)
+
+  if (allIds.length === 0) return {}
+
+  const body = {
+    timeMin,
+    timeMax,
+    timeZone: 'Europe/Madrid',
+    items: allIds.map(id => ({ id })),
   }
+
+  const data = await googleFetch('/freeBusy', token, {
+    method: 'POST',
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(10000),
+  })
+
+  const result: Record<string, Array<{ start: Date; end: Date }>> = {}
+  if (data.calendars) {
+    for (const [calId, busyOrErr] of Object.entries(data.calendars)) {
+      const busy = busyOrErr as { busy?: Array<{ start: string; end: string }> }
+      if (busy?.busy) {
+        result[calId] = busy.busy.map(b => ({
+          start: new Date(b.start),
+          end: new Date(b.end),
+        }))
+      }
+    }
+  }
+  return result
 }
 
 // ─── Hour-level availability logic ─────────────────────────────────────────
 
 type SlotType = 'TOTAL' | 'PARCIAL' | 'OCUPADO'
 
-interface CalendarBusyness {
-  alex: boolean      // true = has event
-  adriana: boolean
-  ninos: boolean     // true = kids at home (busy)
+function slotType(args: { alex: boolean; adriana: boolean; kidsAtSchool: boolean }): SlotType {
+  // TOTAL: Alex libre + kids en el colegio
+  // PARCIAL: Alex libre pero kids en casa
+  // OCUPADO: Alex ocupado
+  if (args.alex) return 'OCUPADO'
+  if (args.kidsAtSchool) return 'TOTAL'
+  return 'PARCIAL'
 }
 
-function slotType(b: CalendarBusyness): SlotType {
-  const alexFree    = !b.alex
-  const adrianaFree = !b.adriana
-  const ninosHome   = b.ninos  // true = kids at home (calendar says they're busy/occupied)
-
-  if (alexFree && adrianaFree && !ninosHome) return 'TOTAL'
-  if (alexFree && (adrianaFree || !ninosHome)) return 'PARCIAL'
-  return 'OCUPADO'
-}
-
-// Merge consecutive slots of the same type into continuous blocks
 function mergeBlocks(
   slots: Array<{ hour: number; tipo: SlotType }>,
 ): Array<{ horaInicio: number; horaFin: number; tipo: SlotType; label: string }> {
@@ -71,19 +85,39 @@ function mergeBlocks(
   for (let i = 0; i <= slots.length; i++) {
     const t = i < slots.length ? slots[i].tipo : null
     if (t !== cur) {
-      if (cur !== null) blocks.push({ horaInicio: slots[start].hour, horaFin: slots[i - 1].hour + 1, tipo: cur })
+      if (cur !== null) {
+        blocks.push({ horaInicio: slots[start].hour, horaFin: slots[i - 1].hour + 1, tipo: cur })
+      }
       if (t !== null) { cur = t; start = i }
     }
   }
 
   return blocks.map(b => ({
     ...b,
-    label: b.tipo === 'TOTAL'
-      ? 'Tiempo libre'
-      : b.tipo === 'PARCIAL'
-      ? 'Parcialmente libre'
-      : 'Ocupado',
+    label:
+      b.tipo === 'TOTAL'   ? 'Tiempo libre' :
+      b.tipo === 'PARCIAL'  ? 'Parcialmente libre' :
+                              'Ocupado',
   }))
+}
+
+// ─── Defaults when no Google token ─────────────────────────────────────────
+
+function defaultBlocks(dayOfWeek?: number) {
+  if (dayOfWeek === 0) {
+    return [{ horaInicio: 9, horaFin: 20, tipo: 'PARCIAL', label: 'Domingo familiar' }]
+  }
+  if (dayOfWeek === 6) {
+    return [
+      { horaInicio: 9,  horaFin: 14, tipo: 'TOTAL',   label: 'Tiempo libre (mañana)' },
+      { horaInicio: 14, horaFin: 20, tipo: 'PARCIAL', label: 'Tarde parcial' },
+    ]
+  }
+  return [
+    { horaInicio: 8,  horaFin: 14, tipo: 'TOTAL',   label: 'Tiempo libre' },
+    { horaInicio: 14, horaFin: 18, tipo: 'PARCIAL',  label: 'Parcial' },
+    { horaInicio: 18, horaFin: 22, tipo: 'OCUPADO',  label: 'Ocupado' },
+  ]
 }
 
 // ─── Main GET ──────────────────────────────────────────────────────────────
@@ -93,79 +127,107 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url)
     const dias = Math.min(parseInt(searchParams.get('dias') ?? '7'), 30)
 
-    // 1. Get Google token from cookie
     const token = req.cookies.get('google_access_token')?.value
 
-    // 2. Get calendar IDs from MotorConfig
-    let motorConfig: { calendarIds: string } | null = null
+    let alexId = '', adrianaId = '', colegiosId = ''
     try {
-      motorConfig = await prisma.motorConfig.findUnique({ where: { id: 'default' } })
-    } catch { /* MotorConfig table may not exist yet */ }
-
-    let alexId = '', adrianaId = '', ninosId = ''
-    try {
-      if (motorConfig?.calendarIds) {
-        const ids = JSON.parse(motorConfig.calendarIds)
-        alexId    = ids.alex    ?? ''
-        adrianaId = ids.adriana ?? ''
-        ninosId   = ids.ninos   ?? ''
+      const cfg = await prisma.motorConfig.findUnique({ where: { id: 'default' } })
+      if (cfg?.calendarIds) {
+        const ids = JSON.parse(cfg.calendarIds)
+        // Formato MotorConfig: { alex: "id", adriana: "id" } O { alex: { id: "...", label: "...", tipo: "..." } }
+        function calId(val: unknown): string {
+          // val puede ser: "id-string", { id: "id-string" }, { id: { id: "...", ... }, ... }
+          if (typeof val === 'string') return val
+          if (typeof val !== 'object' || val === null) return ''
+          const obj = val as Record<string, unknown>
+          if ('id' in obj) return calId(obj.id)  // recursivo para encontrar el string real
+          return ''
+        }
+        alexId     = calId(ids.alex)
+        adrianaId  = calId(ids.adriana)
+        colegiosId = calId(ids.colegios)
       }
-    } catch { /* ignore parse errors */ }
+    } catch { /* MotorConfig may not exist */ }
 
+    console.error(
+      '[disponibilidad] token=' + (token ? 'YES' : 'NO') +
+      ' | alex=' + alexId.substring(0, 8) +
+      ' | adriana=' + adrianaId.substring(0, 8) +
+      ' | colegios=' + colegiosId.substring(0, 8),
+    )
+
+    // Madrid is UTC+2 in April (CEST). Google returns busy times in UTC.
+    // busy hour in Madrid = busyUTC.getUTCHours() + 2
+    const M = 2
     const today = new Date()
     today.setHours(0, 0, 0, 0)
 
-    // Result: { "YYYY-MM-DD": blocks[] }
     const result: Record<string, Array<{ horaInicio: number; horaFin: number; tipo: string; label: string }>> = {}
 
     for (let d = 0; d < dias; d++) {
-      const day = new Date(today)
-      day.setDate(day.getDate() + d)
-      const nextDay = new Date(day)
-      nextDay.setDate(nextDay.getDate() + 1)
-
+      const day = new Date(today); day.setDate(day.getDate() + d)
+      const nextDay = new Date(day); nextDay.setDate(nextDay.getDate() + 1)
       const timeMin = day.toISOString()
       const timeMax = nextDay.toISOString()
       const key = day.toISOString().split('T')[0]
 
-      if (token && alexId) {
+      if (token && (alexId || adrianaId || colegiosId)) {
         try {
-          // Fetch all 3 calendars in parallel
-          const [alexBusy, adrianaBusy, ninosBusy] = await Promise.all([
-            fetchCalendarBusy(alexId,    token, timeMin, timeMax),
-            fetchCalendarBusy(adrianaId, token, timeMin, timeMax),
-            fetchCalendarBusy(ninosId,   token, timeMin, timeMax),
-          ])
+          const busyData = await fetchFreeBusy(
+            { alex: alexId, adriana: adrianaId, colegios: colegiosId },
+            token, timeMin, timeMax,
+          )
 
-          // Build hour slots (0-23)
+          const alexBusy    = busyData[alexId]    ?? []
+          const adrianaBusy = busyData[adrianaId] ?? []
+          const colegiosBusy = busyData[colegiosId] ?? []
+
+          // Log detailed busy intervals for debugging
+          if (colegiosBusy.length > 0) {
+            console.error('[disponibilidad] ' + key + ' school events:')
+            colegiosBusy.forEach((b, i) => {
+              console.error('  event' + i + ' startUTC=' + b.start.toISOString() + ' endUTC=' + b.end.toISOString())
+            })
+          }
+          console.error(
+            '[disponibilidad] ' + key +
+            ' | alex busy:' + alexBusy.length +
+            ' | adriana busy:' + adrianaBusy.length +
+            ' | colegios busy:' + colegiosBusy.length,
+          )
+
           const slots: Array<{ hour: number; tipo: SlotType }> = []
 
           for (let h = 0; h < 24; h++) {
-            const slotStart = new Date(day); slotStart.setHours(h, 0, 0, 0)
-            const slotEnd   = new Date(day); slotEnd.setHours(h + 1, 0, 0, 0)
+            // Slot h in Madrid = UTC (h-M) to (h+1-M).
+            // busyStartUTC = busy.start.getUTCHours() (0-23 UTC)
+            // busyEndUTC   = busy.end.getUTCHours()   (0-23 UTC)
+            // Overlap in UTC: busyStart < slotEndUTC AND busyEnd > slotStartUTC
+            //   busyStart < h+1-M  AND  busyEnd > h-M
+            const isBusyInSlot = (busy: Array<{ start: Date; end: Date }>) =>
+              busy.some(b => {
+                const s = b.start.getUTCHours()       // UTC hour of busy start
+                const e = b.end.getUTCHours()         // UTC hour of busy end
+                const slotStartUtc = h - M            // UTC hour when Madrid h:00 begins
+                const slotEndUtc   = h + 1 - M        // UTC hour when Madrid h+1:00 begins
+                // Handle cross-midnight: if e < s, busy ended next day
+                const effectiveEnd = e < s ? e + 24 : e
+                return s < slotEndUtc && effectiveEnd > slotStartUtc
+              })
 
-            const isBusy = (busy: Array<{ start: Date; end: Date }>) =>
-              busy.some(b => b.start < slotEnd && b.end > slotStart)
+            const alexBusyNow     = isBusyInSlot(alexBusy)
+            const adrianaBusyNow = isBusyInSlot(adrianaBusy)
+            const kidsAtSchool   = isBusyInSlot(colegiosBusy)
 
-            const alexBusyNow    = isBusy(alexBusy)
-            const adrianaBusyNow = isBusy(adrianaBusy)
-            // Kids' "ninos" calendar: if they have an event, they're NOT at home
-            // So ninosHome = isBusy(ninosBusy)
-            const ninosHome = isBusy(ninosBusy)
-
-            slots.push({
-              hour: h,
-              tipo: slotType({ alex: alexBusyNow, adriana: adrianaBusyNow, ninos: ninosHome }),
-            })
+            slots.push({ hour: h, tipo: slotType({ alex: alexBusyNow, adriana: adrianaBusyNow, kidsAtSchool }) })
           }
 
           result[key] = mergeBlocks(slots)
         } catch (e) {
-          console.error('[disponibilidad] Google API error:', e)
-          result[key] = defaultBlocks()
+          console.error('[disponibilidad] Google API error for ' + key + ':', e)
+          result[key] = defaultBlocks(day.getDay())
         }
       } else {
-        // No Google token — use default schedule blocks
         result[key] = defaultBlocks(day.getDay())
       }
     }
@@ -176,26 +238,4 @@ export async function GET(req: NextRequest) {
     console.error('[disponibilidad]', msg)
     return NextResponse.json({ error: msg }, { status: 500 })
   }
-}
-
-function defaultBlocks(dayOfWeek?: number): Array<{ horaInicio: number; horaFin: number; tipo: string; label: string }> {
-  if (dayOfWeek === 0) {
-    // Sunday: mostly free
-    return [
-      { horaInicio: 9, horaFin: 20, tipo: 'PARCIAL', label: 'Domingo familiar' },
-    ]
-  }
-  if (dayOfWeek === 6) {
-    // Saturday: morning free, afternoon partial
-    return [
-      { horaInicio: 9, horaFin: 14, tipo: 'TOTAL', label: 'Tiempo libre (mañana)' },
-      { horaInicio: 14, horaFin: 20, tipo: 'PARCIAL', label: 'Tarde parcial' },
-    ]
-  }
-  // Mon–Fri default
-  return [
-    { horaInicio: 8,  horaFin: 14, tipo: 'TOTAL',   label: 'Tiempo libre' },
-    { horaInicio: 14, horaFin: 18, tipo: 'PARCIAL', label: 'Parcial' },
-    { horaInicio: 18, horaFin: 22, tipo: 'OCUPADO', label: 'Ocupado' },
-  ]
 }
