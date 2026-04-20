@@ -724,7 +724,7 @@ export default function TimeFlow() {
       </div>
 
       {/* Global FAB */}
-      {!modalOpen && activeTab !== 'inbox' && (
+      {!modalOpen && (activeTab === 'timeline' || activeTab === 'calendario') && (
         <button onClick={openCreate} style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 50, width: 56, height: 56, borderRadius: '50%', background: '#6366f1', color: 'white', fontSize: 28, border: 'none', boxShadow: '0 4px 20px rgba(99,102,241,0.5)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>+</button>
       )}
 
