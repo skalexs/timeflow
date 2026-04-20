@@ -237,6 +237,14 @@ function TimelineView({ tasks, disponibilidad, onTaskClick }: { tasks: Task[]; d
   const nowMinutes = 60 * now.getHours() + now.getMinutes()
   const isToday = toDateKey(selected) === toDateKey(now)
 
+  // Auto-scroll to current time on mount
+  useEffect(() => {
+    if (isToday && scrollRef.current) {
+      const target = (nowMinutes / 1440) * 1440 - scrollRef.current.clientHeight / 2
+      scrollRef.current.scrollTop = Math.max(0, target)
+    }
+  }, [isToday])
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: '#0a0a0f' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderBottom: '1px solid #2a2a3d', background: '#13131a', flexShrink: 0 }}>
@@ -249,15 +257,18 @@ function TimelineView({ tasks, disponibilidad, onTaskClick }: { tasks: Task[]; d
       </div>
 
       {/* Header columns */}
-      <div style={{ display: 'grid', gridTemplateColumns: '30px 1fr', borderBottom: '1px solid #2a2a3d', background: '#13131a', flexShrink: 0 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '44px 1fr', borderBottom: '1px solid #2a2a3d', background: '#13131a', flexShrink: 0 }}>
         <div />
         <div style={{ display: 'flex', alignItems: 'center', padding: '8px 4px', borderLeft: '1px solid #2a2a3d' }}>
           <span style={{ fontSize: '10px', color: '#8888a0' }}>📅 {selected.toLocaleDateString('es-ES', { weekday: 'short' })} {selected.getDate()}</span>
         </div>
       </div>
 
-      <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', position: 'relative' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '30px 1fr', position: 'relative', height: '1440px' }}>
+      <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', position: 'relative' }} onLoad={() => {
+        const pct = ((60 * now.getHours() + now.getMinutes()) / 1440) * 100
+        if (scrollRef.current) scrollRef.current.scrollTop = (pct / 100) * 1440 - scrollRef.current.clientHeight / 2
+      }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '44px 1fr', position: 'relative', height: '1440px' }}>
           {/* Half-hour slot labels */}
           <div style={{ position: 'relative', height: '1440px' }}>
             {slots.map((slot, i) => (
@@ -306,6 +317,13 @@ function TimelineView({ tasks, disponibilidad, onTaskClick }: { tasks: Task[]; d
               )
             })}
           </div>
+
+          {/* Now red line */}
+          {isToday && (
+            <div style={{ position: 'absolute', top: `${(nowMinutes / 1440) * 100}%`, left: 0, right: 0, height: '2px', background: '#ef4444', zIndex: 20, pointerEvents: 'none' }}>
+              <div style={{ position: 'absolute', top: '-4px', left: '44px', width: '8px', height: '8px', borderRadius: '50%', background: '#ef4444', boxShadow: '0 0 6px #ef4444' }} />
+            </div>
+          )}
 
           {/* Heatmap Strip */}
           <div style={{ position: 'absolute', top: 0, left: 0, width: '4px', height: '100%', zIndex: 0, overflow: 'hidden' }}>
