@@ -35,7 +35,8 @@ model Task {
   inboxOrder     Int       @default(0)
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
-
+  // Tags
+  tags     TaskTag[]
 
   @@map("tasks")
 }
@@ -62,4 +63,24 @@ model Disponibilidad {
   createdAt   DateTime @default(now()) @map("created_at")
 
   @@map("disponibilidad")
+}
+
+model Tag {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  color     String   @default("#6366f1")
+  createdAt DateTime @default(now()) @map("created_at")
+  tasks     TaskTag[]
+
+  @@map("tags")
+}
+
+model TaskTag {
+  taskId String
+  tagId  String
+  task   Task   @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  tag    Tag    @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([taskId, tagId])
+  @@map("task_tags")
 }

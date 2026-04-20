@@ -5,22 +5,27 @@ import { syncLocalDoneToGoogle } from '@/services/GoogleTasksSync'
 const prisma = new PrismaClient()
 
 // GET /api/inbox — tasks not yet scheduled (archived=false, scheduledStart=null)
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
+    const { searchParams } = new URL(req.url)
+    const tagId = searchParams.get('tag')
+
     const tasks = await prisma.task.findMany({
       where: {
         archived: false,
         done: false,
-        // Inbox = tareas sin hora programada O con scheduledStart=null
-        // scheduledStart=null significa "esperando a ser schedulada"
         OR: [
           { scheduledStart: null },
           { startTime: null },
         ],
+        ...(tagId ? { tags: { some: { tagId } } } : {}),
       },
+      include: { tags: { include: { tag: true } } },
       orderBy: [{ urgency: 'desc' }, { inboxOrder: 'asc' }],
     })
-    return NextResponse.json(tasks)
+    // Flatten tags into array
+    const result = tasks.map(t => ({ ...t, tags: t.tags.map(tt => tt.tag) }))
+    return NextResponse.json(result)
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : String(e)
     return NextResponse.json({ error: msg }, { status: 500 })
@@ -31,7 +36,7 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
-    const { title, urgency, importance, mentalNoise, duration, status } = body
+    const { title, urgency, importance, mentalNoise, duration, status, tagIds } = body
 
     if (!title) {
       return NextResponse.json({ error: 'title required' }, { status: 400 })
@@ -44,7 +49,6 @@ export async function POST(req: NextRequest) {
     const task = await prisma.task.create({
       data: {
         title,
-        // inbox tasks have no scheduled time yet
         startTime: null,
         endTime: null,
         urgency: urgency ?? null,
@@ -54,9 +58,12 @@ export async function POST(req: NextRequest) {
         status: status ?? 'pending',
         archived: false,
         inboxOrder: nextOrder,
+        ...(tagIds?.length ? { tags: { create: tagIds.map((tid: string) => ({ tagId: tid })) } } : {}),
       },
+      include: { tags: { include: { tag: true } } },
     })
-    return NextResponse.json(task, { status: 201 })
+    const result = { ...task, tags: task.tags.map((tt: { tag: unknown }) => tt.tag) }
+    return NextResponse.json(result, { status: 201 })
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : String(e)
     return NextResponse.json({ error: msg }, { status: 500 })
@@ -67,7 +74,7 @@ export async function POST(req: NextRequest) {
 export async function PATCH(req: NextRequest) {
   try {
     const body = await req.json()
-    const { id, status, archived, urgency, importance, mentalNoise, duration, inboxOrder, ...rest } = body
+    const { id, status, archived, urgency, importance, mentalNoise, duration, inboxOrder, tagIds, ...rest } = body
 
     if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 })
 
@@ -93,14 +100,29 @@ export async function PATCH(req: NextRequest) {
     if (rest.color) updateData.color = rest.color
     if (rest.googleTaskId !== undefined) updateData.googleTaskId = rest.googleTaskId
 
+    // Handle tagIds: replace all tags for this task
+    if (tagIds !== undefined) {
+      await prisma.taskTag.deleteMany({ where: { taskId: id } })
+      if (tagIds.length > 0) {
+        await prisma.taskTag.createMany({
+          data: tagIds.map((tid: string) => ({ taskId: id, tagId: tid })),
+        })
+      }
+    }
+
     const task = await prisma.task.update({ where: { id }, data: updateData })
+    const updated = await prisma.task.findUnique({
+      where: { id },
+      include: { tags: { include: { tag: true } } },
+    })
+    const result = updated ? { ...updated, tags: updated.tags.map((tt: { tag: unknown }) => tt.tag) } : task
 
     // Two-way sync: if marked done AND has googleTaskId → update in Google
     if (updateData.done === true && task.googleTaskId) {
       syncLocalDoneToGoogle(id).catch(console.error)
     }
 
-    return NextResponse.json(task)
+    return NextResponse.json(result)
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : String(e)
     return NextResponse.json({ error: msg }, { status: 500 })

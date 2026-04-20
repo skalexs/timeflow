@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef } from 'react'
 import MotorConfig from '@/components/MotorConfig'
 import AgendaView from '@/components/AgendaView'
+import TagPicker, { type Tag } from '@/components/TagPicker'
 
 function formatTime(date: Date) {
   return `${date.getUTCHours().toString().padStart(2,'0')}:${date.getUTCMinutes().toString().padStart(2,'0')}`
@@ -25,6 +26,7 @@ interface Task {
   done?: boolean
 }
 
+interface InboxTag { id: string; name: string; color: string }
 interface InboxTask {
   id: string | number
   title: string
@@ -35,6 +37,7 @@ interface InboxTask {
   mentalNoise: number
   duration: number
   googleTaskId?: string
+  tags: InboxTag[]
 }
 
 interface BloqueDisp {
@@ -380,6 +383,12 @@ function InboxSheet({ task, onClose, onSave }: { task: InboxTask; onClose: () =>
         {SLIDER_CONFIG.map(({ key, label, color, suffix, min, max }) => (
           <Slider key={key} label={label} value={form[key] ?? null as any} onChange={v => setForm(f => ({ ...f, [key]: v }))} color={color} suffix={suffix} min={min} max={max} />
         ))}
+        <div style={{ margin: '12px 0' }}>
+          <TagPicker
+            value={(form.tags as InboxTag[]) ?? []}
+            onChange={tags => setForm(f => ({ ...f, tags }))}
+          />
+        </div>
         <button onClick={() => onSave(form)} style={{ width: '100%', marginTop: 8, padding: '14px', background: '#6366f1', color: 'white', border: 'none', borderRadius: 12, fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>Guardar</button>
       </div>
     </>
@@ -389,6 +398,8 @@ function InboxSheet({ task, onClose, onSave }: { task: InboxTask; onClose: () =>
 function InboxView({ onTaskClick, onScheduleTask, onCountChange }: { onTaskClick?: (task: InboxTask) => void; onScheduleTask?: (task: InboxTask) => void; onCountChange?: (n: number) => void }) {
   const [tasks, setTasks] = useState<InboxTask[]>([])
   const [filter, setFilter] = useState<'all' | 'pending' | 'completed'>('all')
+  const [allTags, setAllTags] = useState<InboxTag[]>([])
+  const [activeTag, setActiveTag] = useState<string | null>(null)
   const [selected, setSelected] = useState<InboxTask | null>(null)
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -399,8 +410,9 @@ function InboxView({ onTaskClick, onScheduleTask, onCountChange }: { onTaskClick
   const [newNoise, setNewNoise] = useState(3)
   const [newDuration, setNewDuration] = useState(30)
   const [newGoogleTask, setNewGoogleTask] = useState(false)
+  const [newTags, setNewTags] = useState<Tag[]>([])
 
-  useEffect(() => { fetchTasks() }, [])
+  useEffect(() => { fetchTasks(); fetch('/api/tags').then(r => r.json()).then(setAllTags).catch(() => {}) }, [])
 
   async function fetchTasks() {
     setLoading(true)
@@ -424,10 +436,14 @@ function InboxView({ onTaskClick, onScheduleTask, onCountChange }: { onTaskClick
       await fetch('/api/tasks/sync-google', { method: 'POST' }).catch(() => {})
     }
     await fetchTasks()
-    setShowForm(false); setNewTitle(''); setNewUrgency(3); setNewImportance(3); setNewNoise(3); setNewDuration(30); setNewGoogleTask(false)
+    setShowForm(false); setNewTitle(''); setNewUrgency(3); setNewImportance(3); setNewNoise(3); setNewDuration(30); setNewGoogleTask(false); setNewTags([])
   }
 
   const filtered = tasks.filter(t => {
+    if (activeTag) {
+      const hasTag = (t.tags as InboxTag[]).find(tag => tag.id === activeTag)
+      if (!hasTag) return false
+    }
     if (filter === 'pending') return t.status === 'pending' && !t.archived
     if (filter === 'completed') return t.status === 'completed'
     return !t.archived
@@ -440,7 +456,8 @@ function InboxView({ onTaskClick, onScheduleTask, onCountChange }: { onTaskClick
   }
 
   async function saveEdited(edited: Partial<InboxTask>) {
-    await fetch('/api/inbox', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: edited.id, ...edited }) })
+    const tagIds = (edited.tags as InboxTag[] | undefined)?.map((t: InboxTag) => t.id) ?? []
+    await fetch('/api/inbox', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: edited.id, ...edited, tagIds }) })
     await fetchTasks()
     setSelected(null)
   }
@@ -455,11 +472,19 @@ function InboxView({ onTaskClick, onScheduleTask, onCountChange }: { onTaskClick
       <div style={{ padding: '12px 16px', paddingTop: 'calc(12px + env(safe-area-inset-top))' }}>
         <input type="text" placeholder="Buscar tarea..." value={search} onChange={e => setSearch(e.target.value)} style={{ width: '100%', background: '#1c1c26', border: '1px solid #2a2a3d', borderRadius: 10, padding: '10px 14px', fontSize: 13, color: '#f0f0f5', outline: 'none', boxSizing: 'border-box' }} />
       </div>
-      <div style={{ display: 'flex', gap: 6, padding: '0 16px 12px', overflowX: 'auto' }}>
+      <div style={{ display: 'flex', gap: 6, padding: '0 16px 8px', overflowX: 'auto' }}>
         {(['all', 'pending', 'completed'] as const).map(f => (
           <button key={f} onClick={() => setFilter(f)} style={{ flexShrink: 0, padding: '6px 14px', borderRadius: 20, border: 'none', fontSize: 12, fontWeight: 600, cursor: 'pointer', background: filter === f ? '#6366f1' : '#1c1c26', color: filter === f ? 'white' : '#8888a0' }}>{f === 'all' ? 'Todas' : f === 'pending' ? 'Pendientes' : 'Completadas'}</button>
         ))}
       </div>
+      {allTags.length > 0 && (
+        <div style={{ display: 'flex', gap: 6, padding: '0 16px 10px', overflowX: 'auto' }}>
+          <button onClick={() => setActiveTag(null)} style={{ flexShrink: 0, padding: '4px 10px', borderRadius: 20, fontSize: 11, fontWeight: 600, cursor: 'pointer', background: !activeTag ? '#6366f1' : '#1c1c26', color: !activeTag ? 'white' : '#8888a0' }}>Todos</button>
+          {allTags.map(tag => (
+            <button key={tag.id} onClick={() => setActiveTag(activeTag === tag.id ? null : tag.id)} style={{ flexShrink: 0, padding: '4px 10px', borderRadius: 20, fontSize: 11, fontWeight: 600, cursor: 'pointer', background: activeTag === tag.id ? tag.color : tag.color + '33', color: activeTag === tag.id ? 'white' : tag.color, border: activeTag === tag.id ? 'none' : `1px solid ${tag.color}55` }}>#{tag.name}</button>
+          ))}
+        </div>
+      )}
 
       {loading ? <div style={{ textAlign: 'center', padding: '48px 20px', color: '#4a4a6a' }}><p style={{ margin: 0, fontSize: 14 }}>Cargando...</p></div> :
        filtered.length === 0 ? <div style={{ textAlign: 'center', padding: '48px 20px', color: '#4a4a6a' }}><div style={{ fontSize: 40, marginBottom: 12 }}>📨</div><p style={{ margin: 0, fontSize: 14 }}>No hay tareas en la Bandeja de Entrada</p></div> :
@@ -476,8 +501,9 @@ function InboxView({ onTaskClick, onScheduleTask, onCountChange }: { onTaskClick
               {task.mentalNoise && <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 4, background: '#8b5cf622', color: '#8b5cf6', fontWeight: 600 }}>RN:{task.mentalNoise}</span>}
               {task.duration && <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 4, background: '#06b6d422', color: '#06b6d4', fontWeight: 600 }}>{task.duration}m</span>}
               {task.googleTaskId && <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 4, background: '#3a3a4d', color: '#8888a0' }}>📱</span>}
-              {(task.mentalNoise ?? 3) >= 4 && <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 4, background: '#10b98122', color: '#10b981', fontWeight: 600 }}>🏠 Concentración total</span>}
-              {(task.mentalNoise ?? 3) <= 2 && <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 4, background: '#f59e0b22', color: '#f59e0b', fontWeight: 600 }}>🏠👧 Puede ir con niños</span>}
+              {(task.tags as InboxTag[]).map(tag => (
+                <span key={tag.id} style={{ fontSize: 10, padding: '2px 6px', borderRadius: 4, background: tag.color + '22', color: tag.color, fontWeight: 600 }}>#{tag.name}</span>
+              ))}
             </div>
           </div>
           {onScheduleTask && <button onClick={e => { e.stopPropagation(); onScheduleTask(task) }} title="Programar" style={{ background: '#2a2a3d', border: 'none', borderRadius: 8, color: '#8888a0', padding: '6px 8px', fontSize: 12, cursor: 'pointer' }}>⏱</button>}
@@ -500,9 +526,12 @@ function InboxView({ onTaskClick, onScheduleTask, onCountChange }: { onTaskClick
               const setVal = key === 'urgency' ? setNewUrgency : key === 'importance' ? setNewImportance : key === 'mentalNoise' ? setNewNoise : setNewDuration
               return <Slider key={key} label={label} value={val} onChange={setVal} color={color} suffix={suffix} min={min} max={max} />
             })}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
               <input type="checkbox" id="googleTaskCheck" checked={newGoogleTask} onChange={e => setNewGoogleTask(e.target.checked)} style={{ accentColor: '#6366f1', width: 16, height: 16 }} />
               <label htmlFor="googleTaskCheck" style={{ fontSize: 12, color: '#8888a0', cursor: 'pointer' }}>Añadir también a Google Tasks</label>
+            </div>
+            <div style={{ marginBottom: 12 }}>
+              <TagPicker value={newTags} onChange={setNewTags} />
             </div>
             <div style={{ display: 'flex', gap: 10 }}>
               <button onClick={() => setShowForm(false)} style={{ flex: 1, padding: '12px', background: '#2a2a3d', color: '#8888a0', border: 'none', borderRadius: 10, fontSize: 13, cursor: 'pointer' }}>Cancelar</button>
