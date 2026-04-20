@@ -219,7 +219,7 @@ function CalendarMonth({ tasks, disponibilidad, onDayClick }: { tasks: Task[]; d
 }
 
 function TimelineView({ tasks, disponibilidad, onTaskClick }: { tasks: Task[]; disponibilidad: Record<string, BloqueDisp[]>; onTaskClick: (task: Task) => void }) {
-  const inboxCount = tasks.filter(t => !t.startTime).length
+  const [inboxCount, setInboxCount] = useState(0)
   const scrollRef = useRef<HTMLDivElement>(null)
   const [selected, setSelected] = useState(new Date())
 
@@ -386,7 +386,7 @@ function InboxSheet({ task, onClose, onSave }: { task: InboxTask; onClose: () =>
   )
 }
 
-function InboxView({ onTaskClick, onScheduleTask }: { onTaskClick?: (task: InboxTask) => void; onScheduleTask?: (task: InboxTask) => void }) {
+function InboxView({ onTaskClick, onScheduleTask, onCountChange }: { onTaskClick?: (task: InboxTask) => void; onScheduleTask?: (task: InboxTask) => void; onCountChange?: (n: number) => void }) {
   const [tasks, setTasks] = useState<InboxTask[]>([])
   const [filter, setFilter] = useState<'all' | 'pending' | 'completed'>('all')
   const [selected, setSelected] = useState<InboxTask | null>(null)
@@ -406,7 +406,10 @@ function InboxView({ onTaskClick, onScheduleTask }: { onTaskClick?: (task: Inbox
     setLoading(true)
     try {
       const r = await fetch('/api/inbox')
-      setTasks(await r.json())
+      const data = await r.json()
+      const pending = data.filter((t: InboxTask) => t.status === 'pending' && !t.archived)
+      setTasks(data)
+      onCountChange?.(pending.length)
     } catch { } finally { setLoading(false) }
   }
 
@@ -584,7 +587,7 @@ export default function TimeFlow() {
   const [timePickerOpen, setTimePickerOpen] = useState(false)
   const [schedulingTask, setSchedulingTask] = useState<InboxTask | null>(null)
   const [disponibilidad, setDisponibilidad] = useState<Record<string, BloqueDisp[]>>({})
-  const inboxCount = tasks.filter(t => !t.startTime).length
+  const [inboxCount, setInboxCount] = useState(0)
   const scrollRef = useRef<HTMLDivElement>(null)
 
   function cycleTheme() {
@@ -724,7 +727,7 @@ export default function TimeFlow() {
         )}
         {activeTab === 'timeline' && <TimelineView tasks={tasks} disponibilidad={disponibilidad} onTaskClick={openEdit} />}
         {activeTab === 'calendario' && <CalendarMonth tasks={tasks} disponibilidad={disponibilidad} onDayClick={d => { setSelectedDate(d); setActiveTab('agenda') }} />}
-        {activeTab === 'inbox' && <InboxView onScheduleTask={handleScheduleTask} />}
+        {activeTab === 'inbox' && <InboxView onScheduleTask={handleScheduleTask} onCountChange={setInboxCount} />}
       </div>
 
       {/* Global FAB */}
