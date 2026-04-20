@@ -677,35 +677,34 @@ export default function TimeFlow() {
 
   return (
     <div data-theme={theme} style={{ background: 'var(--bg)', color: 'var(--text)', height: '100dvh', display: 'flex', flexDirection: 'column', fontFamily: '-apple-system, BlinkMacSystemFont, sans-serif', paddingTop: 'env(safe-area-inset-top, 0px)', paddingBottom: 'env(safe-area-inset-bottom, 0px)', paddingLeft: 'env(safe-area-inset-left, 0px)', paddingRight: 'env(safe-area-inset-right, 0px)' }}>
-      {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid #2a2a3d', background: '#13131a', flexShrink: 0, zIndex: 50 }}>
-        <span style={{ fontSize: '15px', fontWeight: '700' }}>TimeFlow</span>
-        <span style={{ fontSize: '11px', color: '#8888a0', fontVariantNumeric: 'tabular-nums' }}>{selectedDate.toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' })}</span>
-      </div>
-
-      {/* Tab bar */}
-      <div style={{ display: 'flex', alignItems: 'center', padding: '10px 16px 8px', gap: 12 }}>
-        <span style={{ fontSize: 18, fontWeight: 800, color: '#f0f0f5', flex: 1 }}>TimeFlow</span>
-        <button onClick={() => setMotorConfigOpen(true)} title="Configurar Motor de Disponibilidad" style={{ background: '#2a2a3d', border: 'none', borderRadius: 8, color: '#8888a0', width: 34, height: 34, fontSize: 16, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>⚙️</button>
-        <button onClick={cycleTheme} title="Cambiar tema" style={{ background: '#2a2a3d', border: 'none', borderRadius: 8, color: '#8888a0', width: 34, height: 34, fontSize: 16, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>◐</button>
-      </div>
-      <div style={{ display: 'flex', padding: '0 16px 8px', gap: 4 }}>
-        {(['agenda', 'timeline', 'calendario', 'inbox'] as const).map(tab => (
-          <button key={tab} onClick={() => setActiveTab(tab)} style={{ flex: 1, padding: '8px', borderRadius: 10, border: 'none', fontSize: 13, fontWeight: 600, cursor: 'pointer', background: activeTab === tab ? '#6366f1' : '#1c1c26', color: activeTab === tab ? 'white' : '#8888a0', textTransform: 'capitalize' }}>{tab === 'agenda' ? '📋 Agenda' : tab === 'timeline' ? '📅 Timeline' : tab === 'calendario' ? '📆 Calendario' : '📥 Inbox'}</button>
-        ))}
-      </div>
-
-      {/* Availability Legend (timeline/calendario) */}
-      {(activeTab === 'timeline' || activeTab === 'calendario') && (
-        <div style={{ display: 'flex', gap: 16, padding: '6px 16px', background: '#0d0d14', borderBottom: '1px solid #1c1c26', flexShrink: 0, overflowX: 'auto' }}>
-          {[['TOTAL', '#10b981', 'Foco total'], ['PARCIAL', '#f59e0b', 'Parcialmente libre'], ['OCUPADO', '#6b7280', 'No disponible']].map(([tipo, color, label]) => (
-            <div key={tipo as string} style={{ display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0 }}>
-              <div style={{ width: 10, height: 10, borderRadius: '50%', background: color as string }} />
-              <span style={{ fontSize: 10, color: '#8888a0', whiteSpace: 'nowrap' }}>{label as string}</span>
-            </div>
+      {/* Header: app name + icons + tabs, single compact row */}
+      <div style={{ display: 'flex', flexDirection: 'column', background: '#13131a', borderBottom: '1px solid #2a2a3d', flexShrink: 0, zIndex: 50 }}>
+        {/* Top row: title left, icons right */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 16px 6px' }}>
+          <span style={{ fontSize: 16, fontWeight: 800, color: '#f0f0f5' }}>TimeFlow</span>
+          <div style={{ display: 'flex', gap: 6 }}>
+            <button onClick={() => setMotorConfigOpen(true)} title="Configurar Motor" style={{ background: '#2a2a3d', border: 'none', borderRadius: 8, color: '#8888a0', width: 32, height: 32, fontSize: 15, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>⚙️</button>
+            <button onClick={cycleTheme} title="Cambiar tema" style={{ background: '#2a2a3d', border: 'none', borderRadius: 8, color: '#8888a0', width: 32, height: 32, fontSize: 15, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>◐</button>
+          </div>
+        </div>
+        {/* Tabs */}
+        <div style={{ display: 'flex', padding: '0 12px 8px', gap: 4 }}>
+          {(['agenda', 'timeline', 'calendario', 'inbox'] as const).map(tab => (
+            <button key={tab} onClick={() => setActiveTab(tab)} style={{ flex: 1, padding: '7px 4px', borderRadius: 8, border: 'none', fontSize: 12, fontWeight: 600, cursor: 'pointer', background: activeTab === tab ? '#6366f1' : '#1c1c26', color: activeTab === tab ? 'white' : '#8888a0', textTransform: 'capitalize', whiteSpace: 'nowrap', overflow: 'hidden' }}>{tab === 'agenda' ? '📋 Agenda' : tab === 'timeline' ? '📅 Timeline' : tab === 'calendario' ? '📆 Calend.' : '📥 Inbox'}</button>
           ))}
         </div>
-      )}
+        {/* Availability Legend (timeline/calendario) */}
+        {(activeTab === 'timeline' || activeTab === 'calendario') && (
+          <div style={{ display: 'flex', gap: 12, padding: '4px 16px 6px', background: '#0d0d14', borderTop: '1px solid #1c1c26', overflowX: 'auto' }}>
+            {[['TOTAL', '#10b981', 'Foco'], ['PARCIAL', '#f59e0b', 'Parcial'], ['OCUPADO', '#6b7280', 'Ocupado']].map(([tipo, color, label]) => (
+              <div key={tipo as string} style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+                <div style={{ width: 8, height: 8, borderRadius: '50%', background: color as string }} />
+                <span style={{ fontSize: 10, color: '#8888a0', whiteSpace: 'nowrap' }}>{label as string}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* Content */}
       <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', position: 'relative' }}>

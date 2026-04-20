@@ -214,64 +214,33 @@ function AgendaViewInner({ tasks, disponibilidad, selectedDate, onTaskClick, onA
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
 
-      {/* ── Header ── */}
-      <div style={{
-        display: 'flex', alignItems: 'center',
-        padding: '10px 16px', borderBottom: '1px solid var(--border)',
-        background: 'var(--surface)', flexShrink: 0, gap: 8,
-      }}>
-        <button onClick={() => navigate(-1)} style={{
-          background: 'var(--surface2)', border: 'none', borderRadius: 8,
-          color: 'var(--text)', width: 34, height: 34, fontSize: 18,
-          cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-        }}>‹</button>
-        <div style={{ flex: 1, textAlign: 'center' }}>
-          <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>
-            {selectedDate.toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' }).replace(',', '')}
-          </span>
-          {isToday(selectedDate) && (
-            <span style={{ marginLeft: 8, fontSize: 11, color: 'var(--accent)', fontWeight: 600 }}>Hoy</span>
-          )}
+      {/* ── Compact date nav + 3-day strip ── */}
+      <div style={{ background: 'var(--surface)', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
+        {/* Date nav */}
+        <div style={{ display: 'flex', alignItems: 'center', padding: '6px 12px 4px', gap: 8 }}>
+          <button onClick={() => navigate(-1)} style={{ background: 'var(--surface2)', border: 'none', borderRadius: 6, color: 'var(--text)', width: 28, height: 28, fontSize: 16, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>‹</button>
+          <div style={{ flex: 1, textAlign: 'center' }}>
+            <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>
+              {selectedDate.toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' }).replace(',', '')}
+            </span>
+            {isToday(selectedDate) && <span style={{ marginLeft: 6, fontSize: 10, color: 'var(--accent)', fontWeight: 600 }}>Hoy</span>}
+          </div>
+          <button onClick={() => navigate(1)} style={{ background: 'var(--surface2)', border: 'none', borderRadius: 6, color: 'var(--text)', width: 28, height: 28, fontSize: 16, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>›</button>
         </div>
-        <button onClick={() => navigate(1)} style={{
-          background: 'var(--surface2)', border: 'none', borderRadius: 8,
-          color: 'var(--text)', width: 34, height: 34, fontSize: 18,
-          cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-        }}>›</button>
-      </div>
-
-      {/* ── 3-Day Strip ── */}
-      <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', background: 'var(--surface)', flexShrink: 0 }}>
-        {days.map((day, idx) => {
-          const blocks = bloquesForDay(day)
-          const sel = isSelected(day)
-          return (
-            <div key={idx} onClick={() => window.dispatchEvent(new CustomEvent('agenda-select', { detail: day }))}
-              style={{
-                flex: 1, padding: '8px 4px', textAlign: 'center', cursor: 'pointer',
-                borderRight: idx < 2 ? '1px solid var(--border)' : 'none',
-                background: sel ? 'var(--accent)' : 'transparent',
-              }}>
-              <div style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase',
-                color: sel ? 'rgba(255,255,255,0.7)' : 'var(--text-dim)' }}>
-                {WEEK_DAY(day)}
+        {/* 3-day strip */}
+        <div style={{ display: 'flex' }}>
+          {days.map((day, idx) => {
+            const blocks = bloquesForDay(day)
+            const sel = isSelected(day)
+            return (
+              <div key={idx} onClick={() => window.dispatchEvent(new CustomEvent('agenda-select', { detail: day }))}
+                style={{ flex: 1, padding: '6px 2px', textAlign: 'center', cursor: 'pointer', borderRight: idx < 2 ? '1px solid var(--border)' : 'none', background: sel ? 'var(--accent)' : 'transparent' }}>
+                <div style={{ fontSize: 9, fontWeight: 600, textTransform: 'uppercase', color: sel ? 'rgba(255,255,255,0.7)' : 'var(--text-dim)' }}>{WEEK_DAY(day)}</div>
+                <div style={{ fontSize: 15, fontWeight: 700, color: sel ? 'white' : isToday(day) ? 'var(--accent)' : 'var(--text)', marginTop: 1 }}>{day.getDate()}</div>
               </div>
-              <div style={{ fontSize: 18, fontWeight: 700, color: sel ? 'white' : isToday(day) ? 'var(--accent)' : 'var(--text)', marginTop: 2 }}>
-                {day.getDate()}
-              </div>
-              {blocks.length > 0 && (
-                <div style={{ display: 'flex', gap: 2, justifyContent: 'center', marginTop: 3 }}>
-                  {blocks.slice(0, 3).map((b, i) => (
-                    <div key={i} style={{
-                      width: 6, height: 6, borderRadius: '50%',
-                      background: TIPO_STYLES[b.tipo]?.border ?? 'var(--text-muted)',
-                    }} />
-                  ))}
-                </div>
-              )}
-            </div>
-          )
-        })}
+            )
+          })}
+        </div>
       </div>
 
       {/* ── Main Grid ── */}
