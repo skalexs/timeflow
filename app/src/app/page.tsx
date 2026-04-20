@@ -219,6 +219,7 @@ function CalendarMonth({ tasks, disponibilidad, onDayClick }: { tasks: Task[]; d
 }
 
 function TimelineView({ tasks, disponibilidad, onTaskClick }: { tasks: Task[]; disponibilidad: Record<string, BloqueDisp[]>; onTaskClick: (task: Task) => void }) {
+  const inboxCount = tasks.filter(t => !t.startTime).length
   const scrollRef = useRef<HTMLDivElement>(null)
   const [selected, setSelected] = useState(new Date())
 
@@ -583,6 +584,7 @@ export default function TimeFlow() {
   const [timePickerOpen, setTimePickerOpen] = useState(false)
   const [schedulingTask, setSchedulingTask] = useState<InboxTask | null>(null)
   const [disponibilidad, setDisponibilidad] = useState<Record<string, BloqueDisp[]>>({})
+  const inboxCount = tasks.filter(t => !t.startTime).length
   const scrollRef = useRef<HTMLDivElement>(null)
 
   function cycleTheme() {
@@ -682,6 +684,9 @@ export default function TimeFlow() {
         {/* Top row: title left, icons right */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 16px 6px' }}>
           <span style={{ fontSize: 16, fontWeight: 800, color: '#f0f0f5' }}>TimeFlow</span>
+          {inboxCount > 0 && (
+            <span style={{ marginLeft: 8, background: '#ef4444', color: 'white', borderRadius: 10, padding: '1px 7px', fontSize: 11, fontWeight: 700, lineHeight: '18px' }}>{inboxCount}</span>
+          )}
           <div style={{ display: 'flex', gap: 6 }}>
             <button onClick={() => setMotorConfigOpen(true)} title="Configurar Motor" style={{ background: '#2a2a3d', border: 'none', borderRadius: 8, color: '#8888a0', width: 32, height: 32, fontSize: 15, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>⚙️</button>
             <button onClick={cycleTheme} title="Cambiar tema" style={{ background: '#2a2a3d', border: 'none', borderRadius: 8, color: '#8888a0', width: 32, height: 32, fontSize: 15, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>◐</button>
