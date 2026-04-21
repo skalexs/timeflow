@@ -22,7 +22,7 @@ async function googleFetch(endpoint: string, token: string, options?: RequestIni
 // ─── Fetch busy intervals for multiple calendars in one FreeBusy call ───────
 // Returns { alex: [{start, end}], adriana: [...], colegios: [...] }
 async function fetchFreeBusy(
-  calendarIds: { alex: string; adriana: string; colegios: string },
+  calendarIds: { alex: string; adriana: string; colegios: string; ninos: string },
   token: string,
   timeMin: string,
   timeMax: string,
@@ -65,11 +65,11 @@ async function fetchFreeBusy(
 
 type SlotType = 'TOTAL' | 'PARCIAL' | 'OCUPADO'
 
-function slotType(args: { alex: boolean; adriana: boolean; kidsAtSchool: boolean }): SlotType {
-  // TOTAL: Alex libre + kids en el colegio
-  // PARCIAL: Alex libre pero kids en casa
-  // OCUPADO: Alex ocupado
-  if (args.alex) return 'OCUPADO'
+function slotType(args: { alex: boolean; adriana: boolean; kidsAtSchool: boolean; ninos: boolean }): SlotType {
+  // TOTAL: Alex libre + kids en el colegio + sin eventos familiares
+  // PARCIAL: Alex libre pero kids en casa o hay evento familiar (Casa y Niños)
+  // OCUPADO: Alex ocupado o hay evento en Casa y Niños
+  if (args.alex || args.ninos) return 'OCUPADO'
   if (args.kidsAtSchool) return 'TOTAL'
   return 'PARCIAL'
 }
@@ -129,7 +129,7 @@ export async function GET(req: NextRequest) {
 
     const token = req.cookies.get('google_access_token')?.value
 
-    let alexId = '', adrianaId = '', colegiosId = ''
+    let alexId = '', adrianaId = '', colegiosId = '', ninosId = ''
     try {
       const cfg = await prisma.motorConfig.findUnique({ where: { id: 'default' } })
       if (cfg?.calendarIds) {
@@ -146,6 +146,7 @@ export async function GET(req: NextRequest) {
         alexId     = calId(ids.alex)
         adrianaId  = calId(ids.adriana)
         colegiosId = calId(ids.colegios)
+        ninosId    = calId(ids.ninos)
       }
     } catch { /* MotorConfig may not exist */ }
 
@@ -171,16 +172,17 @@ export async function GET(req: NextRequest) {
       const timeMax = nextDay.toISOString()
       const key = day.toISOString().split('T')[0]
 
-      if (token && (alexId || adrianaId || colegiosId)) {
+      if (token && (alexId || adrianaId || colegiosId || ninosId)) {
         try {
           const busyData = await fetchFreeBusy(
-            { alex: alexId, adriana: adrianaId, colegios: colegiosId },
+            { alex: alexId, adriana: adrianaId, colegios: colegiosId, ninos: ninosId },
             token, timeMin, timeMax,
           )
 
           const alexBusy    = busyData[alexId]    ?? []
           const adrianaBusy = busyData[adrianaId] ?? []
           const colegiosBusy = busyData[colegiosId] ?? []
+          const ninosBusyData = busyData[ninosId]  ?? []
 
 
 
@@ -206,8 +208,9 @@ export async function GET(req: NextRequest) {
             const alexBusyNow     = isBusyInSlot(alexBusy)
             const adrianaBusyNow = isBusyInSlot(adrianaBusy)
             const kidsAtSchool   = isBusyInSlot(colegiosBusy)
+            const ninosBusy      = isBusyInSlot(ninosBusyData)
 
-            slots.push({ hour: h, tipo: slotType({ alex: alexBusyNow, adriana: adrianaBusyNow, kidsAtSchool }) })
+            slots.push({ hour: h, tipo: slotType({ alex: alexBusyNow, adriana: adrianaBusyNow, kidsAtSchool, ninos: ninosBusy }) })
           }
 
           result[key] = mergeBlocks(slots)
