@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1
 # ─── Stage 1: Install deps ───────────────────────────────────────────────────
 FROM node:20-slim AS deps
 WORKDIR /app
@@ -11,10 +12,9 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN npx prisma generate && npm run build
 
-# ─── Stage 3: Runtime (minimal) ───────────────────────────────────────────────
-FROM node:20-slim AS runner
+# ─── Stage 3: Runtime (Debian bookworm for libssl1.1 compatibility) ─────────
+FROM node:20-bookworm AS runner
 WORKDIR /app
-ENV NODE_ENV=production
 
 # Install dumb-init for proper signal handling
 RUN apt-get update && apt-get install -y --no-install-recommends dumb-init && rm -rf /var/lib/apt/lists/*
