@@ -39,6 +39,13 @@ interface InboxTask {
   duration: number
   googleTaskId?: string
   tags: InboxTag[]
+  // Extended fields for create/schedule
+  scheduledStart?: string | null
+  scheduledEnd?: string | null
+  startTime?: string | null
+  endTime?: string | null
+  color?: string
+  iconId?: string
 }
 
 interface BloqueDisp {
@@ -469,15 +476,20 @@ function InboxView({ onTaskClick, onScheduleTask, onCountChange }: { onTaskClick
   async function createTask() {
     const title = newTitle.trim()
     if (!title) return
-    // Create locally first
-    const r = await fetch('/api/inbox', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title, urgency: newUrgency, importance: newImportance, mentalNoise: newNoise, duration: newDuration }) })
-    const created = await r.json()
-    // If "add to Google" checked, create in Google and link
-    if (newGoogleTask && created.id) {
-      await fetch('/api/tasks/sync-google', { method: 'POST' }).catch(() => {})
+    const savedLoading = loading
+    setLoading(true)
+    setShowForm(false)
+    try {
+      const r = await fetch('/api/inbox', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title, urgency: newUrgency, importance: newImportance, mentalNoise: newNoise, duration: newDuration }) })
+      const created = await r.json()
+      if (newGoogleTask && created.id) {
+        await fetch('/api/tasks/sync-google', { method: 'POST' }).catch(() => {})
+      }
+      await fetchTasks()
+      setNewTitle(''); setNewUrgency(3); setNewImportance(3); setNewNoise(3); setNewDuration(30); setNewGoogleTask(false); setNewTags([])
+    } finally {
+      setLoading(savedLoading)
     }
-    await fetchTasks()
-    setShowForm(false); setNewTitle(''); setNewUrgency(3); setNewImportance(3); setNewNoise(3); setNewDuration(30); setNewGoogleTask(false); setNewTags([])
   }
 
   const filtered = tasks.filter(t => {
@@ -492,8 +504,15 @@ function InboxView({ onTaskClick, onScheduleTask, onCountChange }: { onTaskClick
 
   async function toggleStatus(task: InboxTask) {
     const newStatus = task.status === 'pending' ? 'completed' : 'pending'
-    await fetch('/api/inbox', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: task.id, status: newStatus }) })
-    await fetchTasks()
+    // Optimistic update: update UI immediately, rollback on error
+    setTasks(prev => prev.map(t => t.id === task.id ? { ...t, status: newStatus } : t))
+    try {
+      await fetch('/api/inbox', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: task.id, status: newStatus }) })
+    } catch {
+      // Rollback on error
+      setTasks(prev => prev.map(t => t.id === task.id ? { ...t, status: task.status } : t))
+      await fetchTasks()
+    }
   }
 
   async function saveEdited(edited: Partial<InboxTask>) {
