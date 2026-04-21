@@ -2,7 +2,8 @@
 // UTC en toda la BBDD. Zona horaria del cliente se aplica solo en UI.
 
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
 }
 
 datasource db {
