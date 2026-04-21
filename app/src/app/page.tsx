@@ -503,10 +503,8 @@ function InboxView({ onTaskClick, onScheduleTask, onCountChange }: { onTaskClick
     setSelected(null)
   }
 
-  // Sync Google Tasks → Local on mount
-  useEffect(() => {
+  // Sync Google Tasks → Local on mount (one-time)
     fetch('/api/tasks/sync-google', { method: 'POST' }).catch(() => {})
-  }, [])
 
   return (
     <div style={{ flex: 1, overflowY: 'auto', padding: '0 0 80px', paddingTop: 'env(safe-area-inset-top)' }}>
@@ -690,8 +688,8 @@ export default function TimeFlow() {
 
   useEffect(() => {
     if (activeTab === 'timeline' || activeTab === 'calendario') {
-      fetch('/api/disponibilidad?dias=31').then(r => r.json()).then(data => { if (data.ok) setDisponibilidad(data.disponibilidad) }).catch(() => {})
-      fetch('/api/google-events?dias=31').then(r => r.json()).then(data => { if (data.ok) setGoogleEvents(data.events) }).catch(() => {})
+      fetch('/api/disponibilidad?dias=14').then(r => r.json()).then(data => { if (data.ok) setDisponibilidad(data.disponibilidad) }).catch(() => {})
+      fetch('/api/google-events?dias=14').then(r => r.json()).then(data => { if (data.ok) setGoogleEvents(data.events) }).catch(() => {})
     }
   }, [activeTab])
 

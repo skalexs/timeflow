@@ -130,16 +130,17 @@ export async function syncGoogleToLocal(req: NextRequest): Promise<SyncResult> {
   })
   const existingIds = new Set(existing.map(t => t.googleTaskId))
 
+  // Get max inboxOrder ONCE before loop (fixes N+1 query)
+  const maxOrder = await prisma.task.aggregate({
+    where: { archived: false, scheduledStart: null },
+    _max: { inboxOrder: true },
+  })
+  let nextOrder = (maxOrder._max.inboxOrder ?? 0) + 1
+
   let created = 0, errors = 0
   for (const gt of googleTasks) {
     if (gt.deleted) continue
     if (existingIds.has(gt.id)) continue
-
-    const max = await prisma.task.aggregate({
-      where: { archived: false, scheduledStart: null },
-      _max: { inboxOrder: true },
-    })
-    const nextOrder = (max._max.inboxOrder ?? 0) + 1
 
     try {
       await prisma.task.create({

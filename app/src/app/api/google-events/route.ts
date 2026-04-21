@@ -100,7 +100,6 @@ export async function GET(req: NextRequest) {
       } catch { /* skip failed calendars */ }
     }))
 
-    console.error('[google-events] events=' + allEvents.length + ' cals=' + eventCalIds.join(','))
     return NextResponse.json({ ok: true, events: allEvents })
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : String(e)
