@@ -27,6 +27,7 @@ interface Task {
 }
 
 interface InboxTag { id: string; name: string; color: string }
+interface GoogleEvent { id: string; summary: string; start: string; end: string; colorId: string; calendarId: string }
 interface InboxTask {
   id: string | number
   title: string
@@ -221,7 +222,7 @@ function CalendarMonth({ tasks, disponibilidad, onDayClick }: { tasks: Task[]; d
   )
 }
 
-function TimelineView({ tasks, disponibilidad, onTaskClick }: { tasks: Task[]; disponibilidad: Record<string, BloqueDisp[]>; onTaskClick: (task: Task) => void }) {
+function TimelineView({ tasks, disponibilidad, googleEvents, onTaskClick }: { tasks: Task[]; disponibilidad: Record<string, BloqueDisp[]>; googleEvents?: GoogleEvent[]; onTaskClick: (task: Task) => void }) {
   const [inboxCount, setInboxCount] = useState(0)
   const scrollRef = useRef<HTMLDivElement>(null)
   const [selected, setSelected] = useState(new Date())
@@ -234,6 +235,20 @@ function TimelineView({ tasks, disponibilidad, onTaskClick }: { tasks: Task[]; d
     const d = toDateKey(new Date(t.startTime ?? 0))
     return d === toDateKey(selected)
   })
+
+  // Google Calendar events for this day (Casa y Niños / Turnos)
+  const googleEventsForDay = (googleEvents ?? []).filter(ev => {
+    if (!ev.start) return false
+    const evDate = ev.start.split('T')[0].split('+')[0]
+    return evDate === selected.toISOString().split('T')[0]
+  })
+
+  // Google color ID → hex (approximate mapping)
+  const GOOGLE_COLORS: Record<string, string> = {
+    '1': '#7986cb', '2': '#33b679', '3': '#8e24aa', '4': '#e67c73',
+    '5': '#f6c026', '6': '#f5511d', '7': '#039be5', '8': '#616161',
+    '9': '#3f51b5', '10': '#01579b', '11': '#0b8043',
+  }
 
   const slots = Array.from({ length: 48 }, (_, i) => ({ h: Math.floor(i / 2), m: (i % 2) * 30 }))
   const dayLabel = selected.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })
@@ -299,6 +314,32 @@ function TimelineView({ tasks, disponibilidad, onTaskClick }: { tasks: Task[]; d
               const borders = { TOTAL: '#10b981', PARCIAL: '#f59e0b', OCUPADO: '#6b7280' }
               return (
                 <div key={i} style={{ position: 'absolute', top: `${top}%`, height: `${height}%`, left: '3px', right: '3px', background: colors[bloque.tipo] ?? '#6b728022', borderLeft: `3px solid ${borders[bloque.tipo] ?? '#6b7280'}`, borderRadius: '4px', zIndex: 1, pointerEvents: 'none' }} />
+              )
+            })}
+
+            {/* Google Calendar events (Casa y Niños, Turnos) */}
+            {googleEventsForDay.map(ev => {
+              const startStr = ev.start
+              const endStr = ev.end
+              // Parse start: could be dateTime (ISO with TZ) or date (all-day)
+              const startHour = startStr.includes('T') ? new Date(startStr).getUTCHours() + 2 : parseInt(startStr.split('T')[0].split('-')[2])
+              const startMin = startStr.includes('T') ? new Date(startStr).getUTCMinutes() : 0
+              const endHour = endStr.includes('T') ? new Date(endStr).getUTCHours() + 2 : startHour + 1
+              const endMin = endStr.includes('T') ? new Date(endStr).getUTCMinutes() : 0
+              const startTotalMin = startHour * 60 + startMin
+              const endTotalMin = endHour * 60 + endMin
+              const durationMin = endTotalMin - startTotalMin
+              if (durationMin <= 0) return null
+              const top = startTotalMin / 1440 * 100
+              const height = Math.max(durationMin / 1440 * 100, 0.5)
+              const gColor = GOOGLE_COLORS[ev.colorId] ?? '#6366f1'
+              return (
+                <div key={ev.id} style={{ position: 'absolute', top: `${top}%`, height: `${height}%`, left: '3px', right: '3px', borderRadius: '6px', background: gColor + '33', borderLeft: `3px solid ${gColor}`, zIndex: 8, overflow: 'hidden', pointerEvents: 'none' }}>
+                  <div style={{ padding: '3px 6px', display: 'flex', flexDirection: 'column', gap: '1px' }}>
+                    <span style={{ fontSize: '10px', fontWeight: 600, color: gColor, lineHeight: 1.2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>📅 {ev.summary}</span>
+                    <span style={{ fontSize: '8px', color: gColor + 'aa', fontVariantNumeric: 'tabular-nums' }}>{String(startHour).padStart(2,'0')}:{String(startMin).padStart(2,'0')} - {String(endHour).padStart(2,'0')}:{String(endMin).padStart(2,'0')}</span>
+                  </div>
+                </div>
               )
             })}
 
@@ -616,6 +657,7 @@ export default function TimeFlow() {
   const [timePickerOpen, setTimePickerOpen] = useState(false)
   const [schedulingTask, setSchedulingTask] = useState<InboxTask | null>(null)
   const [disponibilidad, setDisponibilidad] = useState<Record<string, BloqueDisp[]>>({})
+  const [googleEvents, setGoogleEvents] = useState<GoogleEvent[]>([])
   const [inboxCount, setInboxCount] = useState(0)
   const scrollRef = useRef<HTMLDivElement>(null)
 
@@ -649,6 +691,7 @@ export default function TimeFlow() {
   useEffect(() => {
     if (activeTab === 'timeline' || activeTab === 'calendario') {
       fetch('/api/disponibilidad?dias=31').then(r => r.json()).then(data => { if (data.ok) setDisponibilidad(data.disponibilidad) }).catch(() => {})
+      fetch('/api/google-events?dias=31').then(r => r.json()).then(data => { if (data.ok) setGoogleEvents(data.events) }).catch(() => {})
     }
   }, [activeTab])
 
@@ -754,7 +797,7 @@ export default function TimeFlow() {
             onAddClick={openCreate}
           />
         )}
-        {activeTab === 'timeline' && <TimelineView tasks={tasks} disponibilidad={disponibilidad} onTaskClick={openEdit} />}
+        {activeTab === 'timeline' && <TimelineView tasks={tasks} disponibilidad={disponibilidad} googleEvents={googleEvents} onTaskClick={openEdit} />}
         {activeTab === 'calendario' && <CalendarMonth tasks={tasks} disponibilidad={disponibilidad} onDayClick={d => { setSelectedDate(d); setActiveTab('agenda') }} />}
         {activeTab === 'inbox' && <InboxView onScheduleTask={handleScheduleTask} onCountChange={setInboxCount} />}
       </div>

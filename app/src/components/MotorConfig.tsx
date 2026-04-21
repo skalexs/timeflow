@@ -9,17 +9,15 @@ interface GoogleCalendar {
 }
 
 interface CalendarsConfig {
-  alex: { id: string; label: string; tipo: string }
-  adriana: { id: string; label: string; tipo: string }
-  colegios: { id: string; label: string; tipo: string }
-  ninosCasa: { id: string; label: string; tipo: string }
+  turnos: { id: string; label: string; tipo: 'disponibilidad' | 'eventos' | 'ambos' }
+  colegios: { id: string; label: string; tipo: 'disponibilidad' | 'eventos' | 'ambos' }
+  casa_ninos: { id: string; label: string; tipo: 'disponibilidad' | 'eventos' | 'ambos' }
 }
 
 const DEFAULT_CALENDARS: CalendarsConfig = {
-  alex: { id: '', label: 'Alex (Trabajo)', tipo: 'trabajo' },
-  adriana: { id: '', label: 'Adriana (Trabajo)', tipo: 'trabajo' },
-  colegios: { id: '', label: 'Colegios', tipo: 'escuela' },
-  ninosCasa: { id: '', label: 'Niños y Casa', tipo: 'familia' },
+  turnos: { id: '', label: 'Turnos', tipo: 'ambos' },
+  colegios: { id: '', label: 'Colegios', tipo: 'disponibilidad' },
+  casa_ninos: { id: '', label: 'Casa y Niños', tipo: 'eventos' },
 }
 
 const DEFAULT_PROMPT = `Eres el scheduler inteligente de TimeFlow. Tienes que decidir DÓNDE colocar una tarea.
@@ -153,10 +151,9 @@ export default function MotorConfig({ onClose }: { onClose: () => void }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           calendarIds: {
-            alex: selectedCalendars.alex.id,
-            adriana: selectedCalendars.adriana.id,
-            colegios: selectedCalendars.colegios.id,
-            ninos: selectedCalendars.ninosCasa.id,
+            turnos: selectedCalendars.turnos,
+            colegios: selectedCalendars.colegios,
+            casa_ninos: selectedCalendars.casa_ninos,
           },
           promptIA: aiPrompt,
           googleConnected: connected,
@@ -181,11 +178,16 @@ export default function MotorConfig({ onClose }: { onClose: () => void }) {
             if (typeof val === 'object' && val !== null && 'id' in val) return getId((val as Record<string, unknown>).id)
             return ''
           }
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          function parseCal(val: unknown, fallback: any): any {
+            if (typeof val === 'string') return { ...fallback, id: val }
+            if (typeof val === 'object' && val !== null) return { ...fallback, ...(val as Record<string, unknown>) }
+            return fallback
+          }
           setSelectedCalendars({
-            alex: { id: getId(data.calendarIds.alex), label: 'Alex (Trabajo)', tipo: 'trabajo' },
-            adriana: { id: getId(data.calendarIds.adriana), label: 'Adriana (Trabajo)', tipo: 'trabajo' },
-            colegios: { id: getId(data.calendarIds.colegios), label: 'Colegios', tipo: 'escuela' },
-            ninosCasa: { id: getId(data.calendarIds.ninos), label: 'Niños y Casa', tipo: 'familia' },
+            turnos: parseCal(data.calendarIds.turnos, DEFAULT_CALENDARS.turnos),
+            colegios: parseCal(data.calendarIds.colegios, DEFAULT_CALENDARS.colegios),
+            casa_ninos: parseCal(data.calendarIds.casa_ninos, DEFAULT_CALENDARS.casa_ninos),
           })
         }
         if (data.promptIA) setAiPrompt(data.promptIA)
@@ -265,10 +267,17 @@ export default function MotorConfig({ onClose }: { onClose: () => void }) {
                   const matched = googleCalendars.find(c => c.id === cal.id)
                   return (
                     <div key={key} style={{ background: '#13131a', borderRadius: 10, padding: '12px 14px', border: cal.id ? '1px solid #10b98144' : '1px solid #2a2a3d' }}>
-                      <div style={{ fontSize: 12, fontWeight: 600, color: '#8888a0', marginBottom: 6 }}>{cal.label} <span style={{ marginLeft: 6, fontSize: 10, color: '#6b7280', fontWeight: 400 }}>({cal.tipo})</span></div>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                        <span style={{ fontSize: 13, fontWeight: 700, color: '#f0f0f5' }}>{cal.label}</span>
+                        <select value={cal.tipo} onChange={e => setSelectedCalendars(prev => ({ ...prev, [key]: { ...prev[key], tipo: e.target.value as 'disponibilidad' | 'eventos' | 'ambos' } }))} style={{ background: '#0d0d14', border: '1px solid #3a3a4d', borderRadius: 6, padding: '4px 8px', fontSize: 11, color: '#8888a0', cursor: 'pointer' }}>
+                          <option value="disponibilidad">Disponibilidad</option>
+                          <option value="eventos">Solo eventos</option>
+                          <option value="ambos">Ambos</option>
+                        </select>
+                      </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <input type="text" value={cal.id} onChange={e => setSelectedCalendars(prev => ({ ...prev, [key]: { ...prev[key], id: e.target.value } }))} placeholder="ID del calendario de Google (ej: abc123@group.calendar.google.com)" style={{ flex: 1, background: '#0d0d14', border: '1px solid #3a3a4d', borderRadius: 8, padding: '8px 10px', fontSize: 12, color: '#f0f0f5', outline: 'none' }} />
-                        {matched && <span style={{ fontSize: 11, color: '#10b981', fontWeight: 600, flexShrink: 0 }}>✓</span>}
+                        <input type="text" value={cal.id} onChange={e => setSelectedCalendars(prev => ({ ...prev, [key]: { ...prev[key], id: e.target.value } }))} placeholder="ID del calendario de Google" style={{ flex: 1, background: '#0d0d14', border: '1px solid #3a3a4d', borderRadius: 8, padding: '8px 10px', fontSize: 12, color: '#f0f0f5', outline: 'none' }} />
+                        {matched && <span style={{ fontSize: 11, color: '#10b981', fontWeight: 600, flexShrink: 0 }}>✓ {matched.summary}</span>}
                       </div>
                     </div>
                   )
