@@ -168,16 +168,12 @@ export default function MotorConfig({ onClose }: { onClose: () => void }) {
   }
 
   useEffect(() => {
-    // Load config from server
+    // Exchange OAuth code if present, then load config and check token status
+    handleCallback()
     fetch('/api/motor-config')
       .then(r => r.json())
       .then(data => {
         if (data.calendarIds) {
-          function getId(val: unknown): string {
-            if (typeof val === 'string') return val
-            if (typeof val === 'object' && val !== null && 'id' in val) return getId((val as Record<string, unknown>).id)
-            return ''
-          }
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           function parseCal(val: unknown, fallback: any): any {
             if (typeof val === 'string') return { ...fallback, id: val }
@@ -193,7 +189,7 @@ export default function MotorConfig({ onClose }: { onClose: () => void }) {
         if (data.promptIA) setAiPrompt(data.promptIA)
       })
       .catch(() => {
-        // Fallback to localStorage
+        // Fallback to localStorage on network error
         const saved = localStorage.getItem('timeflow_motor_config')
         if (saved) {
           try {
@@ -204,10 +200,6 @@ export default function MotorConfig({ onClose }: { onClose: () => void }) {
         }
       })
     checkTokenStatus()
-  }, [])
-
-  useEffect(() => {
-    handleCallback()
   }, [])
 
   return (

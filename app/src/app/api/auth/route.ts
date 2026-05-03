@@ -38,7 +38,7 @@ export async function GET(req: NextRequest) {
   const code = searchParams.get('code')
   if (code) {
     // This is an OAuth callback — redirect to frontend callback page
-    const frontendCallback = 'https://skalexs.duckdns.org/api/auth/callback'
+    const frontendCallback = 'https://timeflow.skalexs.duckdns.org/api/auth/callback'
     const state = searchParams.get('state') ?? ''
     return NextResponse.redirect(`${frontendCallback}?code=${code}&state=${state}`)
   }

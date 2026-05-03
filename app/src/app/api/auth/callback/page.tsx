@@ -8,7 +8,7 @@ export default function AuthCallback() {
     const error = params.get('error')
 
     if (error || !code) {
-      window.location.href = 'https://skalexs.duckdns.org/'
+      window.location.href = 'https://timeflow.skalexs.duckdns.org/'
       return
     }
 
@@ -20,13 +20,13 @@ export default function AuthCallback() {
       .then(res => res.json())
       .then(data => {
         if (data.ok) {
-          window.location.href = 'https://skalexs.duckdns.org/'
+          window.location.href = 'https://timeflow.skalexs.duckdns.org/'
         } else {
-          window.location.href = 'https://skalexs.duckdns.org/'
+          window.location.href = 'https://timeflow.skalexs.duckdns.org/'
         }
       })
       .catch(() => {
-        window.location.href = 'https://skalexs.duckdns.org/'
+        window.location.href = 'https://timeflow.skalexs.duckdns.org/'
       })
   }, [])
 

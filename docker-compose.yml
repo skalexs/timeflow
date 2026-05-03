@@ -6,7 +6,7 @@ services:
     container_name: timeflow_app
     restart: unless-stopped
     ports:
-      - "3000:3000"
+      - "3011:3000"
     environment:
       DATABASE_URL: postgresql://timeflow:timeflow_secret_2026@timeflow_db:5432/timeflow
       NODE_ENV: production

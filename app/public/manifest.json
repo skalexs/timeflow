@@ -4,7 +4,7 @@
   "description": "Planificación familiar con motor de disponibilidad inteligente",
   "start_url": "/",
   "display": "standalone",
-  "orientation": "portrait",
+  "orientation": "any",
   "background_color": "#0a0a0f",
   "theme_color": "#6366f1",
   "scope": "/",

@@ -12,12 +12,15 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN npx prisma generate && npm run build
 
-# ─── Stage 3: Runtime (Debian bookworm for libssl1.1 compatibility) ─────────
-FROM node:20-bookworm AS runner
+# ─── Stage 3: Runtime (Debian slim — OpenSSL 1.1 for Prisma) ───────────────
+FROM node:20-slim AS runner
 WORKDIR /app
 
-# Install dumb-init for proper signal handling
-RUN apt-get update && apt-get install -y --no-install-recommends dumb-init && rm -rf /var/lib/apt/lists/*
+# Install dumb-init + OpenSSL 1.1 (required by Prisma libquery_engine)
+RUN apt-get update && apt-get install -y --no-install-recommends dumb-init ca-certificates && \
+    echo 'deb http://security.debian.org/debian-security bullseye-security main' > /etc/apt/sources.list.d/bullseye-security.list && \
+    apt-get update && apt-get install -y --no-install-recommends libssl1.1 && \
+    rm -rf /var/lib/apt/lists/*
 
 # Create non-root user
 RUN groupadd --gid 1000 node || true && useradd --uid 1000 --gid node --shell /bin/false --create-home node || true
