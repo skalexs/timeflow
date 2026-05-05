@@ -189,6 +189,7 @@ export default function TimelineView({ tasks, disponibilidad, googleEvents, onTa
 
   // ── View density (double-tap zoom) ───────────────────────────────────────────
   const [viewDensity, setViewDensity] = useState<'expanded' | 'compact'>('expanded')
+  const [showWorkingHours, setShowWorkingHours] = useState(true)
   const HOUR_HEIGHT = { expanded: 60, compact: 30 }
   const lastTapRef = useRef<number>(0)
 
@@ -680,11 +681,29 @@ export default function TimelineView({ tasks, disponibilidad, googleEvents, onTa
             {/* Half-hour slot lines */}
             {slots.map((slot, i) => <div key={i} style={{ position: 'absolute', top: `${(i / 48) * 100}%`, left: 0, right: 0, height: '1px', background: '#2a2a3d' }} />)}
 
-            {/* Working hours boundary (9:00–18:00) */}
-            <div style={{ position: 'absolute', top: `${(9 * 60) / 1440 * 100}%`, height: `${(9 * 60) / 1440 * 100}%`, left: 0, right: 0, background: 'repeating-linear-gradient(0deg, transparent, transparent 8px, #6b728010 8px, #6b728010 16px)', zIndex: 2, pointerEvents: 'none' }} />
-            <div style={{ position: 'absolute', top: `${(9 * 60) / 1440 * 100}%`, height: `${((18 - 9) * 60) / 1440 * 100}%`, left: 0, right: 0, background: '#f59e0b08', borderTop: '1px dashed #f59e0b33', borderBottom: '1px dashed #f59e0b33', zIndex: 2, pointerEvents: 'none' }}>
-              <span style={{ position: 'absolute', top: '2px', left: '4px', fontSize: '9px', color: '#f59e0b66', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Horario laboral</span>
-            </div>
+            {/* Working hours boundary (9:00–18:00) - collapsible */}
+            {showWorkingHours ? (
+              <>
+                <div style={{ position: 'absolute', top: `${(9 * 60) / 1440 * 100}%`, height: `${(9 * 60) / 1440 * 100}%`, left: 0, right: 0, background: 'repeating-linear-gradient(0deg, transparent, transparent 8px, #6b728010 8px, #6b728010 16px)', zIndex: 2, pointerEvents: 'none' }} />
+                <div style={{ position: 'absolute', top: `${(9 * 60) / 1440 * 100}%`, height: `${((18 - 9) * 60) / 1440 * 100}%`, left: 0, right: 0, background: '#f59e0b08', borderTop: '1px dashed #f59e0b33', borderBottom: '1px dashed #f59e0b33', zIndex: 2, pointerEvents: 'none' }}>
+                  <span style={{ position: 'absolute', top: '2px', left: '4px', fontSize: '9px', color: '#f59e0b66', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Horario laboral</span>
+                  <button
+                    onClick={() => setShowWorkingHours(false)}
+                    aria-label="Colapsar horario laboral"
+                    style={{ position: 'absolute', top: '2px', right: '4px', background: 'none', border: 'none', cursor: 'pointer', color: '#f59e0b66', fontSize: '9px', padding: '0 2px', lineHeight: 1 }}
+                  >−</button>
+                </div>
+              </>
+            ) : (
+              <div
+                style={{ position: 'absolute', top: `${(9 * 60) / 1440 * 100}%`, height: '20px', left: 0, right: 0, zIndex: 2, cursor: 'pointer' }}
+                onClick={() => setShowWorkingHours(true)}
+                title="Mostrar horario laboral"
+              >
+                <span style={{ position: 'absolute', top: '2px', left: '4px', fontSize: '9px', color: '#f59e0b66', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Horario laboral</span>
+                <span style={{ position: 'absolute', top: '2px', right: '4px', fontSize: '9px', color: '#f59e0b66', cursor: 'pointer' }}>+</span>
+              </div>
+            )}
 
             {/* Buffer time hatched zones (gaps < 30 min between blocks) */}
             {(() => {
