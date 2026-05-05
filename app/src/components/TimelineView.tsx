@@ -2,6 +2,13 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import type { Task, BloqueDisp, GoogleEvent } from '@/types'
 import SwipeableTask from './SwipeableTask'
+import FocusBlock from './FocusBlock'
+
+// Focus tasks are detected by iconId === '🎯' and get diagonal stripe treatment
+const FOCUS_ICON = '🎯'
+function isFocusTask(task: Task): boolean {
+  return task.iconId === FOCUS_ICON
+}
 
 // ── Offline queue (localStorage) ─────────────────────────────────────────────
 const OFFLINE_QUEUE_KEY = 'timeflow_offline_queue'
@@ -786,8 +793,39 @@ export default function TimelineView({ tasks, disponibilidad, googleEvents, onTa
               const isPast = endMin < nowMinutes
               const isCompleted = task.done === true
               const isFaded = isCompleted || isPast
-              const isDragging = dragRef.current?.task.id === task.id
               const isDraggingThis = dragRef.current !== null && dragRef.current.task.id === task.id
+
+              // Focus tasks (iconId === '🎯') get the FocusBlock treatment with diagonal stripes
+              if (isFocusTask(task)) {
+                return (
+                  <div
+                    key={task.id}
+                    onPointerDown={(e) => handleTaskPointerDown(e, task)}
+                    onPointerMove={(e) => handleTaskPointerMove(e, task)}
+                    onPointerUp={(e) => handleTaskPointerUp(e, task)}
+                    style={{
+                      position: 'absolute', top: `${top}%`, height: `${height}%`,
+                      left: '3px', right: '3px', borderRadius: '8px',
+                      background: 'repeating-linear-gradient(135deg, #1c1c26 0px, #1c1c26 8px, #232330 8px, #232330 16px)',
+                      border: `2px solid ${task.color}66`,
+                      overflow: 'hidden', cursor: isDraggingThis ? 'grabbing' : 'pointer',
+                      opacity: isFaded ? 0.4 : 1,
+                      zIndex: isDraggingThis ? 15 : 10,
+                      boxShadow: `0 0 20px ${task.color}33, 0 4px 16px rgba(0,0,0,0.4)`,
+                      willChange: 'transform',
+                      transform: isDraggingThis ? 'scale(1.05)' : 'scale(1)',
+                      transition: isDraggingThis ? 'none' : 'transform 0.15s ease, opacity 0.15s ease',
+                    }}
+                  >
+                    <FocusBlock
+                      task={task}
+                      onClick={() => onTaskClick(task)}
+                      style={{ width: '100%', height: '100%', position: 'static', transform: 'none' }}
+                    />
+                  </div>
+                )
+              }
+
               return (
                 <div
                   key={task.id}
