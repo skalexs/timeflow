@@ -710,15 +710,34 @@ export default function TimelineView({ tasks, disponibilidad, googleEvents, onTa
               for (let i = 1; i < allBlocks.length; i++) {
                 const gapStart = allBlocks[i - 1].endMin
                 const gapEnd = allBlocks[i].startMin
-                if (gapEnd - gapStart > 0 && gapEnd - gapStart < 30) {
+                const gap = gapEnd - gapStart
+                if (gap > 0 && gap < 30) {
                   buffers.push({ startMin: gapStart, endMin: gapEnd })
                 }
               }
               return buffers.map((buf, i) => {
                 const top = buf.startMin / 1440 * 100
                 const height = Math.max((buf.endMin - buf.startMin) / 1440 * 100, 0.1)
+                const gapMin = buf.endMin - buf.startMin
                 return (
-                  <div key={`buffer-${i}`} style={{ position: 'absolute', top: `${top}%`, height: `${height}%`, left: '3px', right: '3px', background: 'repeating-linear-gradient(45deg, #6366f111, #6366f111 4px, transparent 4px, transparent 8px)', borderLeft: '2px solid #6366f133', zIndex: 3, pointerEvents: 'none', borderRadius: '4px' }} />
+                  <div
+                    key={`buffer-${i}`}
+                    role="img"
+                    aria-label={`Tiempo de buffer: ${gapMin} minutos`}
+                    style={{
+                      position: 'absolute',
+                      top: `${top}%`,
+                      height: `${height}%`,
+                      left: '3px',
+                      right: '3px',
+                      // Visible hatched pattern: indigo diagonal stripes
+                      background: 'repeating-linear-gradient(45deg, #6366f130, #6366f130 3px, transparent 3px, transparent 7px)',
+                      borderLeft: '3px solid #6366f160',
+                      zIndex: 3,
+                      pointerEvents: 'none',
+                      borderRadius: '3px',
+                    }}
+                  />
                 )
               })
             })()}
