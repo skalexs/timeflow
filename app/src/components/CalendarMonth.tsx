@@ -90,12 +90,21 @@ export default function CalendarMonth({ tasks, disponibilidad, onDayClick }: Cal
           const dayTasks = getTasksForDay(d)
           const densityBar = getDensityBar(d)
           return (
-            <div key={i} onClick={() => onDayClick(d)} className={`calendar-day ${isToday(d) ? 'today' : ''} ${!isCurrentMonth(d) ? 'other-month' : ''}`} style={{ borderRadius: '8px', position: 'relative', cursor: 'pointer', aspectRatio: '1', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '2px', transition: 'background 0.15s' }}>
+            <div
+              key={i}
+              role="gridcell"
+              tabIndex={0}
+              aria-label={`${d.getDate()} de ${month.toLocaleString('es-ES', { month: 'long' })}, nivel de ocupación ${density.level > 0 ? density.level : 'libre'}`}
+              onClick={() => onDayClick(d)}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onDayClick(d) } }}
+              title={density.level > 0 ? `Ocupación nivel ${density.level} de 4` : 'Día libre'}
+              className={`calendar-day ${isToday(d) ? 'today' : ''} ${!isCurrentMonth(d) ? 'other-month' : ''}`}
+              style={{ borderRadius: '8px', position: 'relative', cursor: 'pointer', aspectRatio: '1', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '2px', transition: 'background 0.15s' }}
+            >
               {density.ring !== 'transparent' && <div style={{ position: 'absolute', inset: '-2px', borderRadius: '10px', border: `2px solid ${density.ring}`, background: density.fill, pointerEvents: 'none' }} />}
               <span style={{ fontSize: '14px', fontWeight: isToday(d) ? '700' : '400', color: isToday(d) ? '#f0f0f5' : isCurrentMonth(d) ? '#f0f0f5' : '#4a4a6a' }}>{d.getDate()}</span>
               {dayTasks.length > 0 && <div style={{ display: 'flex', gap: '2px', flexWrap: 'wrap', justifyContent: 'center' }}>{dayTasks.map((c, j) => <div key={j} style={{ width: '4px', height: '4px', borderRadius: '50%', background: c }} />)}</div>}
-              {/* Density indicator bar */}
-              {density.level > 0 && <div style={{ display: 'flex', gap: '1px', position: 'absolute', bottom: '4px' }}>{densityBar.map((c, j) => <div key={j} style={{ width: '4px', height: '2px', borderRadius: '1px', background: c }} />)}</div>}
+              {density.level > 0 && <div aria-hidden="true" style={{ display: 'flex', gap: '1px', position: 'absolute', bottom: '4px' }}>{densityBar.map((c, j) => <div key={j} style={{ width: '4px', height: '2px', borderRadius: '1px', background: c }} />)}</div>}
             </div>
           )
         })}
