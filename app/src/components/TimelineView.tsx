@@ -471,7 +471,7 @@ export default function TimelineView({ tasks, disponibilidad, googleEvents, onTa
           justifyContent: 'space-between',
           padding: headerShrunk ? '6px 16px' : '12px 16px',
           borderBottom: '1px solid #2a2a3d',
-          background: '#13131a',
+          background: 'var(--surface)',
           flexShrink: 0,
           transition: 'padding 0.2s ease, opacity 0.2s ease',
           willChange: 'transform, opacity',
@@ -483,7 +483,7 @@ export default function TimelineView({ tasks, disponibilidad, googleEvents, onTa
         <button
           onClick={() => setSelected(d => new Date(d.getTime() - 86400000))}
           aria-label="Día anterior"
-          style={{ background: '#1c1c26', border: 'none', borderRadius: '10px', color: '#f0f0f5', width: '44px', height: '44px', fontSize: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}
+          style={{ background: 'var(--surface2)', border: 'none', borderRadius: '10px', color: '#f0f0f5', width: '44px', height: '44px', fontSize: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}
         >&lt;</button>
 
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: headerShrunk ? '0px' : '2px', transition: 'gap 0.2s ease' }}>
@@ -506,13 +506,13 @@ export default function TimelineView({ tasks, disponibilidad, googleEvents, onTa
         <button
           onClick={() => setSelected(d => new Date(d.getTime() + 86400000))}
           aria-label="Día siguiente"
-          style={{ background: '#1c1c26', border: 'none', borderRadius: '10px', color: '#f0f0f5', width: '44px', height: '44px', fontSize: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}
+          style={{ background: 'var(--surface2)', border: 'none', borderRadius: '10px', color: '#f0f0f5', width: '44px', height: '44px', fontSize: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}
         >&gt;</button>
       </div>
 
       {/* ── Pull-down refresh indicator ─────────────────────────────────────── */}
       {atTop && (
-        <div style={{ textAlign: 'center', padding: '2px 0', fontSize: '10px', color: '#6366f1', background: '#13131a', borderBottom: '1px solid #2a2a3d', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', minHeight: '18px' }}>
+        <div style={{ textAlign: 'center', padding: '2px 0', fontSize: '10px', color: '#6366f1', background: 'var(--surface)', borderBottom: '1px solid #2a2a3d', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', minHeight: '18px' }}>
           {refreshing ? (
             <span style={{ display: 'inline-block', width: '12px', height: '12px', border: '2px solid #6366f1', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
           ) : (
@@ -532,7 +532,7 @@ export default function TimelineView({ tasks, disponibilidad, googleEvents, onTa
             justifyContent: 'center',
             gap: '8px',
             padding: '8px 16px',
-            background: '#1c1c26',
+            background: 'var(--surface2)',
             borderBottom: '1px solid #2a2a3d',
             flexShrink: 0,
           }}
@@ -561,26 +561,26 @@ export default function TimelineView({ tasks, disponibilidad, googleEvents, onTa
           onClick={() => setShowMonthPicker(false)}
         >
           <div
-            style={{ background: '#1c1c26', borderRadius: '16px', padding: '20px', width: '320px', maxWidth: '90vw', boxShadow: '0 20px 60px rgba(0,0,0,0.6)', border: '1px solid #2a2a3d' }}
+            style={{ background: 'var(--surface2)', borderRadius: '16px', padding: '20px', width: '320px', maxWidth: '90vw', boxShadow: '0 20px 60px rgba(0,0,0,0.6)', border: '1px solid #2a2a3d' }}
             onClick={e => e.stopPropagation()}
           >
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
               <button
                 onClick={() => { if (pickerMonth === 0) { setPickerMonth(11); setPickerYear(y => y - 1) } else setPickerMonth(m => m - 1) }}
                 aria-label="Mes anterior"
-                style={{ background: '#2a2a3d', border: 'none', borderRadius: '10px', color: '#f0f0f5', width: '44px', height: '44px', fontSize: '16px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                style={{ background: 'var(--surface3)', border: 'none', borderRadius: '10px', color: '#f0f0f5', width: '44px', height: '44px', fontSize: '16px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
               >&lt;</button>
               <span style={{ fontSize: '16px', fontWeight: '700', color: '#f0f0f5' }}>{MONTHS_ES[pickerMonth]} {pickerYear}</span>
               <button
                 onClick={() => { if (pickerMonth === 11) { setPickerMonth(0); setPickerYear(y => y + 1) } else setPickerMonth(m => m + 1) }}
                 aria-label="Mes siguiente"
-                style={{ background: '#2a2a3d', border: 'none', borderRadius: '10px', color: '#f0f0f5', width: '44px', height: '44px', fontSize: '16px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                style={{ background: 'var(--surface3)', border: 'none', borderRadius: '10px', color: '#f0f0f5', width: '44px', height: '44px', fontSize: '16px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
               >&gt;</button>
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', marginBottom: '8px' }}>
               {DAYS_ES.map(d => (
-                <div key={d} style={{ textAlign: 'center', fontSize: '11px', color: '#8888a0', fontWeight: 600 }}>{d}</div>
+                <div key={d} style={{ textAlign: 'center', fontSize: '11px', color: 'var(--text-dim)', fontWeight: 600 }}>{d}</div>
               ))}
             </div>
 
@@ -623,10 +623,10 @@ export default function TimelineView({ tasks, disponibilidad, googleEvents, onTa
       )}
 
       {/* ── Header columns ─────────────────────────────────────────────────── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '44px 1fr', borderBottom: '1px solid #2a2a3d', background: '#13131a', flexShrink: 0 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '44px 1fr', borderBottom: '1px solid #2a2a3d', background: 'var(--surface)', flexShrink: 0 }}>
         <div />
         <div style={{ display: 'flex', alignItems: 'center', padding: '8px 4px', borderLeft: '1px solid #2a2a3d' }}>
-          <span style={{ fontSize: '10px', color: '#8888a0' }}>📅 {selected.toLocaleDateString('es-ES', { weekday: 'short' })} {selected.getDate()}</span>
+          <span style={{ fontSize: '10px', color: 'var(--text-dim)' }}>📅 {selected.toLocaleDateString('es-ES', { weekday: 'short' })} {selected.getDate()}</span>
         </div>
       </div>
 
@@ -641,7 +641,7 @@ export default function TimelineView({ tasks, disponibilidad, googleEvents, onTa
             onTouchEnd={handleTimelineDoubleTap}
           >
             {/* Half-hour slot lines */}
-            {slots.map((slot, i) => <div key={i} style={{ position: 'absolute', top: `${(i / 48) * 100}%`, left: 0, right: 0, height: '1px', background: '#2a2a3d' }} />)}
+            {slots.map((slot, i) => <div key={i} style={{ position: 'absolute', top: `${(i / 48) * 100}%`, left: 0, right: 0, height: '1px', background: 'var(--surface3)' }} />)}
 
             {/* Working hours boundary */}
             {showWorkingHours ? (
@@ -754,7 +754,7 @@ export default function TimelineView({ tasks, disponibilidad, googleEvents, onTa
                       alignItems: 'center',
                       gap: '10px',
                       padding: '10px 12px',
-                      background: '#1c1c26',
+                      background: 'var(--surface2)',
                       borderRadius: '10px',
                       border: `1px solid ${task.color}44`,
                       cursor: 'pointer',
