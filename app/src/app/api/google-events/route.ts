@@ -1,9 +1,10 @@
 export const dynamic = 'force-dynamic'
 
 import { NextRequest, NextResponse } from 'next/server'
-import { PrismaClient } from '@prisma/client'
+import { prisma } from '@/lib/prisma'
 
-const prisma = new PrismaClient()
+
+
 
 async function googleFetch(endpoint: string, token: string, options?: RequestInit) {
   const url = `https://www.googleapis.com/calendar/v3${endpoint}`

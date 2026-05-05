@@ -7,9 +7,10 @@
  */
 
 import { NextRequest } from 'next/server'
-import { PrismaClient } from '@prisma/client'
+import { prisma } from '@/lib/prisma'
 
-const prisma = new PrismaClient()
+
+
 
 const GOOGLE_TASKS_API = 'https://tasks.googleapis.com/tasks/v1'
 const GOOGLE_TASKS_PATH = '/lists/@default/tasks'

@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { PrismaClient } from '@prisma/client'
-import { syncLocalDoneToGoogle } from '@/services/GoogleTasksSync'
 
-const prisma = new PrismaClient()
+import { syncLocalDoneToGoogle } from '@/services/GoogleTasksSync'
+import { prisma } from '@/lib/prisma'
+
+
 
 // GET /api/inbox — tasks not yet scheduled (archived=false, scheduledStart=null)
 export async function GET(req: NextRequest) {

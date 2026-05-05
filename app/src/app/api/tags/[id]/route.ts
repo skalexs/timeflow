@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { PrismaClient } from '@prisma/client'
+import { prisma } from '@/lib/prisma'
 
-const prisma = new PrismaClient()
+
+
 
 // PATCH /api/tags/[id]
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
