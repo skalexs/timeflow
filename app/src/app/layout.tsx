@@ -39,10 +39,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
 
         {/* Color */}
-        <meta name="msapplication-TileColor" content="#6366f1" />
-        <meta name="msapplication-navbutton-color" content="#6366f1" />
+        <meta name="msapplication-TileColor" content="#090909" />
+        <meta name="msapplication-navbutton-color" content="#090909" />
       </head>
-      <body style={{ margin: 0, padding: 0, background: '#0a0a0f' }}>{children}<PWARegister /></body>
+      <body style={{ margin: 0, padding: 0, background: '#090909' }}>{children}<PWARegister /></body>
     </html>
   )
 }

@@ -181,6 +181,7 @@ const TaskDetailPanel = memo(function TaskDetailPanel({
         {/* Actions */}
         <div style={{
           padding: '16px 20px',
+          paddingBottom: 'calc(16px + env(safe-area-inset-bottom, 0px))',
           borderTop: '1px solid var(--border)',
           display: 'flex',
           flexDirection: 'column',
