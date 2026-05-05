@@ -25,6 +25,21 @@ export interface GoogleEvent {
   calendarId: string
 }
 
+export interface CalendarSet {
+  id: string
+  name: string
+  color: string
+  calendars: GoogleCalendar[]
+  visible: boolean
+}
+
+export interface GoogleCalendar {
+  id: string
+  summary: string
+  colorId: string
+  backgroundColor: string
+}
+
 export interface InboxTask {
   id: string | number
   title: string

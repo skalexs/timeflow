@@ -1,5 +1,7 @@
 'use client'
 import { useRef, useState, useEffect, useCallback, memo } from 'react'
+import { useSwipeGesture } from '@/hooks/useSwipeGesture'
+import SwipeableTask from './SwipeableTask'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -153,9 +155,11 @@ interface AgendaViewProps {
   selectedDate: Date
   onTaskClick: (task: Task) => void
   onAddClick: () => void
+  onTaskComplete?: (task: Task) => void
+  onTaskReschedule?: (task: Task) => void
 }
 
-function AgendaViewInner({ tasks, disponibilidad, selectedDate, onTaskClick, onAddClick }: AgendaViewProps) {
+function AgendaViewInner({ tasks, disponibilidad, selectedDate, onTaskClick, onAddClick, onTaskComplete, onTaskReschedule }: AgendaViewProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
 
   // 3 consecutive days centered around selected
@@ -328,22 +332,24 @@ function AgendaViewInner({ tasks, disponibilidad, selectedDate, onTaskClick, onA
                   const height = taskHeight(task.startTime, task.endTime)
                   if (top === 0 && height === 0) return null
                   return (
-                    <div key={task.id ?? Math.random()}
-                      onClick={(e) => { e.stopPropagation(); onTaskClick(task) }}
+                    <SwipeableTask
+                      key={task.id ?? Math.random()}
+                      onSwipeRight={() => onTaskComplete?.(task)}
+                      onSwipeLeft={() => onTaskReschedule?.(task)}
+                      onClick={(e) => { (e as React.MouseEvent).stopPropagation(); onTaskClick(task) }}
                       style={{
                         position: 'absolute',
                         top: `${top}%`, height: `${height}%`,
                         left: 3, right: 3,
                         background: task.done ? `${task.color}66` : task.color,
                         borderRadius: 6,
-                        padding: '3px 7px',
                         zIndex: 2,
-                        overflow: 'hidden',
                         cursor: 'pointer',
                         boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
-                        display: 'flex', alignItems: 'flex-start', gap: 3,
                         opacity: task.done ? 0.6 : 1,
-                      }}>
+                      }}
+                    >
+                      <div style={{ padding: '3px 7px', display: 'flex', alignItems: 'flex-start', gap: 3, width: '100%', height: '100%', overflow: 'hidden' }}>
                         <span style={{ fontSize: 11 }}>{task.iconId}</span>
                         <span style={{
                           fontSize: 10, fontWeight: 600, color: 'white',
@@ -361,7 +367,8 @@ function AgendaViewInner({ tasks, disponibilidad, selectedDate, onTaskClick, onA
                             {formatTime(new Date(task.startTime))}
                           </span>
                         )}
-                    </div>
+                      </div>
+                    </SwipeableTask>
                   )
                 })}
               </div>
@@ -391,5 +398,7 @@ export default memo(AgendaViewInner, (prev, next) =>
   prev.disponibilidad === next.disponibilidad &&
   prev.selectedDate?.getTime() === next.selectedDate?.getTime() &&
   prev.onTaskClick === next.onTaskClick &&
-  prev.onAddClick === next.onAddClick
+  prev.onAddClick === next.onAddClick &&
+  prev.onTaskComplete === next.onTaskComplete &&
+  prev.onTaskReschedule === next.onTaskReschedule
 )

@@ -4,10 +4,13 @@ import AgendaView from '@/components/AgendaView'
 import CalendarMonth from '@/components/CalendarMonth'
 import InboxView from '@/components/InboxView'
 import TaskModal from '@/components/TaskModal'
+import NaturalLanguageInput from '@/components/NaturalLanguageInput'
+import LongPressFAB from '@/components/LongPressFAB'
 import TimePickerModal from '@/components/TimePickerModal'
 import TimelineView from '@/components/TimelineView'
 import MotorConfig from '@/components/MotorConfig'
-import type { Task, InboxTask, BloqueDisp, GoogleEvent } from '@/types'
+import CalendarSets from '@/components/CalendarSets'
+import type { Task, InboxTask, BloqueDisp, GoogleEvent, CalendarSet } from '@/types'
 
 export default function TimeFlow() {
   const [tasks, setTasks] = useState<Task[]>([])
@@ -20,9 +23,11 @@ export default function TimeFlow() {
   const [motorConfigOpen, setMotorConfigOpen] = useState(false)
   const [theme, setTheme] = useState<'dark'|'light'|'mid'>('dark')
   const [timePickerOpen, setTimePickerOpen] = useState(false)
+  const [nlpOpen, setNlpOpen] = useState(false)
   const [schedulingTask, setSchedulingTask] = useState<InboxTask | null>(null)
   const [disponibilidad, setDisponibilidad] = useState<Record<string, BloqueDisp[]>>({})
   const [googleEvents, setGoogleEvents] = useState<GoogleEvent[]>([])
+  const [calendarSets, setCalendarSets] = useState<CalendarSet[]>([])
   const [inboxCount, setInboxCount] = useState(0)
 
   function cycleTheme() {
@@ -95,6 +100,25 @@ export default function TimeFlow() {
     setTimePickerOpen(true)
   }
 
+  async function handleTaskComplete(task: Task) {
+    if (task.id == null) return
+    await handleSaveTask({ done: true }, task.id)
+  }
+
+  function handleTaskReschedule(task: Task) {
+    // Reuse the scheduling flow with the task as the scheduling target
+    setSchedulingTask(task as unknown as InboxTask)
+    setTimePickerOpen(true)
+  }
+
+  function handleToggleCalendarSet(id: string) {
+    setCalendarSets(sets => sets.map(cs => cs.id === id ? { ...cs, visible: !cs.visible } : cs))
+  }
+
+  function handleRemoveCalendarSet(id: string) {
+    setCalendarSets(sets => sets.filter(cs => cs.id !== id))
+  }
+
   async function handleScheduleConfirm(hour: number, duration: number) {
     if (!schedulingTask) return
     const startTime = new Date(selectedDate)
@@ -139,6 +163,7 @@ export default function TimeFlow() {
         </div>
         {/* Availability Legend (timeline/calendario) */}
         {(activeTab === 'timeline' || activeTab === 'calendario') && (
+          <>
           <div style={{ display: 'flex', gap: 12, padding: '4px 16px 6px', background: '#0d0d14', borderTop: '1px solid #1c1c26', overflowX: 'auto' }}>
             {([['TOTAL', '#10b981', 'Foco'], ['PARCIAL', '#f59e0b', 'Parcial'], ['OCUPADO', '#6b7280', 'Ocupado']] as const).map(([tipo, color, label]) => (
               <div key={tipo as string} style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
@@ -147,6 +172,12 @@ export default function TimeFlow() {
               </div>
             ))}
           </div>
+          <CalendarSets
+            calendarSets={calendarSets}
+            onToggle={handleToggleCalendarSet}
+            onRemove={handleRemoveCalendarSet}
+          />
+          </>
         )}
       </div>
 
@@ -159,19 +190,27 @@ export default function TimeFlow() {
             selectedDate={selectedDate}
             onTaskClick={openEdit}
             onAddClick={openCreate}
+            onTaskComplete={handleTaskComplete}
+            onTaskReschedule={handleTaskReschedule}
           />
         )}
-        {activeTab === 'timeline' && <TimelineView tasks={tasks} disponibilidad={disponibilidad} googleEvents={googleEvents} onTaskClick={openEdit} />}
+        {activeTab === 'timeline' && <TimelineView tasks={tasks} disponibilidad={disponibilidad} googleEvents={googleEvents} onTaskClick={openEdit} onTaskComplete={handleTaskComplete} onTaskReschedule={handleTaskReschedule} />}
         {activeTab === 'calendario' && <CalendarMonth tasks={tasks} disponibilidad={disponibilidad} onDayClick={d => { setSelectedDate(d); setActiveTab('agenda') }} />}
         {activeTab === 'inbox' && <InboxView onScheduleTask={handleScheduleTask} onCountChange={setInboxCount} />}
       </div>
 
-      {/* Global FAB */}
+      {/* Global FAB: single tap → TaskModal, long-press 500ms → NLP */}
       {!modalOpen && (activeTab === 'timeline' || activeTab === 'calendario') && (
-        <button onClick={openCreate} style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 50, width: 56, height: 56, borderRadius: '50%', background: '#6366f1', color: 'white', fontSize: 28, border: 'none', boxShadow: '0 4px 20px rgba(99,102,241,0.5)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>+</button>
+        <LongPressFAB
+          onShortPress={openCreate}
+          onLongPress={() => setNlpOpen(true)}
+          label="+"
+        />
       )}
 
       <TaskModal isOpen={modalOpen} onClose={() => setModalOpen(false)} onSave={handleSaveTask} onDelete={handleDeleteTask} initialTask={editingTask ?? undefined} mode={modalMode} />
+
+      <NaturalLanguageInput isOpen={nlpOpen} onClose={() => setNlpOpen(false)} onSave={handleSaveTask} />
 
       <TimePickerModal isOpen={timePickerOpen} taskTitle={schedulingTask?.title} taskNoise={schedulingTask?.mentalNoise} disponibilidad={dispForToday} onConfirm={handleScheduleConfirm} onCancel={() => { setTimePickerOpen(false); setSchedulingTask(null) }} defaultHour={9} />
 

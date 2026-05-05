@@ -3,11 +3,46 @@ import { useState, useEffect, useRef } from 'react'
 import type { Task } from '@/types'
 import { COLORS, ICONS } from '@/types'
 
-function timeToDate(timeStr: string) {
-  const t = new Date(new Date().toISOString().split('T')[0] + 'T' + timeStr)
-  const offset = t.getTimezoneOffset()
-  t.setMinutes(t.getMinutes() - offset)
-  return t
+function timeToDate(timeStr: string, baseDate?: Date) {
+  const date = baseDate ? new Date(baseDate) : new Date()
+  const [hours, minutes] = timeStr.split(':').map(Number)
+  date.setHours(hours, minutes, 0, 0)
+  const offset = date.getTimezoneOffset()
+  date.setMinutes(date.getMinutes() - offset)
+  return date
+}
+
+type DatePreset = 'today' | 'tomorrow' | 'evening' | 'weekend' | 'nextWeek' | 'custom' | null
+
+function getDateFromPreset(preset: DatePreset): { date: Date; startTime: string; endTime: string } | null {
+  const now = new Date()
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  
+  switch (preset) {
+    case 'today':
+      return { date: today, startTime: '09:00', endTime: '10:00' }
+    case 'tomorrow': {
+      const tomorrow = new Date(today)
+      tomorrow.setDate(tomorrow.getDate() + 1)
+      return { date: tomorrow, startTime: '09:00', endTime: '10:00' }
+    }
+    case 'evening':
+      return { date: today, startTime: '18:00', endTime: '19:00' }
+    case 'weekend': {
+      const saturday = new Date(today)
+      const daysUntilSaturday = (6 - saturday.getDay() + 7) % 7 || 7
+      saturday.setDate(saturday.getDate() + daysUntilSaturday)
+      return { date: saturday, startTime: '10:00', endTime: '11:00' }
+    }
+    case 'nextWeek': {
+      const nextMonday = new Date(today)
+      const daysUntilMonday = (1 - nextMonday.getDay() + 7) % 7 || 7
+      nextMonday.setDate(nextMonday.getDate() + daysUntilMonday)
+      return { date: nextMonday, startTime: '09:00', endTime: '10:00' }
+    }
+    default:
+      return null
+  }
 }
 
 interface TaskModalProps {
@@ -21,14 +56,31 @@ interface TaskModalProps {
 
 export default function TaskModal({ isOpen, onClose, onSave, onDelete, initialTask, mode }: TaskModalProps) {
   const [form, setForm] = useState({ title: '', startTime: '09:00', endTime: '10:00', color: '#6366f1', iconId: '📋' })
+  const [datePreset, setDatePreset] = useState<DatePreset>(null)
+  const [customDate, setCustomDate] = useState('')
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [error, setError] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
-    if (initialTask) setForm({ title: initialTask.title, startTime: initialTask.startTime ?? '09:00', endTime: initialTask.endTime ?? '10:00', color: initialTask.color, iconId: initialTask.iconId })
+    if (initialTask) {
+      setForm({ title: initialTask.title, startTime: initialTask.startTime ?? '09:00', endTime: initialTask.endTime ?? '10:00', color: initialTask.color, iconId: initialTask.iconId })
+      setDatePreset('custom')
+      if (initialTask.startTime) {
+        setCustomDate(initialTask.startTime.split('T')[0])
+      }
+    }
   }, [initialTask])
+
+  const handlePresetClick = (preset: DatePreset) => {
+    setDatePreset(preset)
+    if (preset === 'custom') return
+    const presetData = getDateFromPreset(preset)
+    if (presetData) {
+      setForm(f => ({ ...f, startTime: presetData.startTime, endTime: presetData.endTime }))
+    }
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -37,7 +89,13 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, initialTa
     setSaving(true)
     setError('')
     try {
-      const task = { ...form, startTime: timeToDate(form.startTime).toISOString(), endTime: timeToDate(form.endTime).toISOString() }
+      let baseDate: Date | undefined
+      if (datePreset && datePreset !== 'custom') {
+        baseDate = getDateFromPreset(datePreset)?.date
+      } else if (datePreset === 'custom' && customDate) {
+        baseDate = new Date(customDate)
+      }
+      const task = { ...form, startTime: timeToDate(form.startTime, baseDate).toISOString(), endTime: timeToDate(form.endTime, baseDate).toISOString() }
       await onSave(task, initialTask?.id)
       onClose()
     } catch { setError('Error al guardar. Inténtalo de nuevo.') }
@@ -64,6 +122,73 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, initialTa
           <div>
             <label style={{ fontSize: '12px', color: '#8888a0', display: 'block', marginBottom: '6px' }}>Título</label>
             <input ref={inputRef} value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} placeholder="¿Qué vas a hacer?" style={{ width: '100%', padding: '10px 12px', background: '#13131a', border: '1px solid #2a2a3d', borderRadius: '8px', color: '#f0f0f5', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }} />
+          </div>
+          <div>
+            <label style={{ fontSize: '12px', color: '#8888a0', display: 'block', marginBottom: '8px' }}>Fecha</label>
+            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '8px' }}>
+              {[
+                { key: 'today' as DatePreset, label: 'Hoy' },
+                { key: 'tomorrow' as DatePreset, label: 'Mañana' },
+                { key: 'evening' as DatePreset, label: 'Tarde (6pm)' },
+                { key: 'weekend' as DatePreset, label: 'Fin de semana' },
+                { key: 'nextWeek' as DatePreset, label: 'Próxima semana' },
+              ].map(preset => (
+                <button
+                  key={preset.key}
+                  type="button"
+                  onClick={() => handlePresetClick(preset.key)}
+                  style={{
+                    padding: '6px 12px',
+                    borderRadius: '16px',
+                    border: datePreset === preset.key ? '2px solid #6366f1' : '1px solid #2a2a3d',
+                    background: datePreset === preset.key ? '#6366f122' : '#13131a',
+                    color: datePreset === preset.key ? '#a5b4fc' : '#8888a0',
+                    fontSize: '12px',
+                    fontWeight: datePreset === preset.key ? 600 : 400,
+                    cursor: 'pointer',
+                    transition: 'all 0.15s',
+                  }}
+                >
+                  {preset.label}
+                </button>
+              ))}
+              <button
+                type="button"
+                onClick={() => handlePresetClick('custom')}
+                style={{
+                  padding: '6px 12px',
+                  borderRadius: '16px',
+                  border: datePreset === 'custom' ? '2px solid #6366f1' : '1px solid #2a2a3d',
+                  background: datePreset === 'custom' ? '#6366f122' : '#13131a',
+                  color: datePreset === 'custom' ? '#a5b4fc' : '#8888a0',
+                  fontSize: '12px',
+                  fontWeight: datePreset === 'custom' ? 600 : 400,
+                  cursor: 'pointer',
+                  transition: 'all 0.15s',
+                }}
+              >
+                📅 Elegir fecha...
+              </button>
+            </div>
+            {datePreset === 'custom' && (
+              <input
+                type="date"
+                value={customDate}
+                onChange={e => setCustomDate(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '10px 12px',
+                  background: '#13131a',
+                  border: '1px solid #2a2a3d',
+                  borderRadius: '8px',
+                  color: '#f0f0f5',
+                  fontSize: '14px',
+                  outline: 'none',
+                  boxSizing: 'border-box',
+                  colorScheme: 'dark',
+                }}
+              />
+            )}
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
             {(['startTime', 'endTime'] as const).map(key => (
