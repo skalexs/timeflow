@@ -11,6 +11,7 @@ import TimelineView from '@/components/TimelineView'
 import MotorConfig from '@/components/MotorConfig'
 import CalendarSets from '@/components/CalendarSets'
 import CommandMenu, { useCommandMenu, type CommandItem } from '@/components/CommandMenu'
+import TaskDetailPanel from '@/components/TaskDetailPanel'
 import type { Task, InboxTask, BloqueDisp, GoogleEvent, CalendarSet } from '@/types'
 
 export default function TimeFlow() {
@@ -31,6 +32,10 @@ export default function TimeFlow() {
   const [calendarSets, setCalendarSets] = useState<CalendarSet[]>([])
   const [inboxCount, setInboxCount] = useState(0)
   const [commandMenuOpen, setCommandMenuOpen] = useState(false)
+  const [detailPanelTask, setDetailPanelTask] = useState<Task | null>(null)
+
+  function openDetail(task: Task) { setDetailPanelTask(task) }
+  function closeDetail() { setDetailPanelTask(null) }
 
   // Command menu items — Linear-style shortcuts
   const commandItems: CommandItem[] = [
@@ -211,7 +216,7 @@ export default function TimeFlow() {
             onTaskReschedule={handleTaskReschedule}
           />
         )}
-        {activeTab === 'timeline' && <TimelineView tasks={tasks} disponibilidad={disponibilidad} googleEvents={googleEvents} onTaskClick={openEdit} onTaskComplete={handleTaskComplete} onTaskReschedule={handleTaskReschedule} />}
+        {activeTab === 'timeline' && <TimelineView tasks={tasks} disponibilidad={disponibilidad} googleEvents={googleEvents} onTaskClick={openDetail} onTaskComplete={handleTaskComplete} onTaskReschedule={handleTaskReschedule} />}
         {activeTab === 'calendario' && <CalendarMonth tasks={tasks} disponibilidad={disponibilidad} onDayClick={d => { setSelectedDate(d); setActiveTab('agenda') }} />}
         {activeTab === 'inbox' && <InboxView onScheduleTask={handleScheduleTask} onCountChange={setInboxCount} />}
       </div>
@@ -234,6 +239,15 @@ export default function TimeFlow() {
       {motorConfigOpen && <MotorConfig onClose={() => setMotorConfigOpen(false)} />}
 
       <CommandMenu items={commandItems} isOpen={commandMenuOpen} onClose={() => setCommandMenuOpen(false)} />
+
+      <TaskDetailPanel
+        task={detailPanelTask}
+        isOpen={detailPanelTask !== null}
+        onClose={closeDetail}
+        onEdit={(task) => { openEdit(task); closeDetail() }}
+        onComplete={handleTaskComplete}
+        onReschedule={handleTaskReschedule}
+      />
     </div>
   )
 }
