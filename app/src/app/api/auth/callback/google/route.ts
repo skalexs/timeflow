@@ -5,8 +5,8 @@ export async function GET(req: NextRequest) {
   const code = searchParams.get('code') ?? ''
   const state = searchParams.get('state') ?? ''
 
-  // Redirect to the frontend callback page which handles token exchange
-  // This must match GOOGLE_REDIRECT_URI registered in Google OAuth
-  const frontendCallback = `${process.env.GOOGLE_REDIRECT_URI}/google`
-  return NextResponse.redirect(`${frontendCallback}?code=${code}&state=${state}`)
+  // GOOGLE_REDIRECT_URI = https://timeflow.skalexs.duckdns.org/api/auth/callback/google
+  // Strip /google to get the frontend callback page: /api/auth/callback
+  const baseCallback = (process.env.GOOGLE_REDIRECT_URI ?? '').replace('/google', '')
+  return NextResponse.redirect(`${baseCallback}?code=${code}&state=${state}`)
 }
