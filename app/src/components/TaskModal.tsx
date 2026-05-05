@@ -127,11 +127,11 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, initialTa
             <label style={{ fontSize: '12px', color: '#8888a0', display: 'block', marginBottom: '8px' }}>Fecha</label>
             <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '8px' }}>
               {[
-                { key: 'today' as DatePreset, label: 'Hoy' },
-                { key: 'tomorrow' as DatePreset, label: 'Mañana' },
-                { key: 'evening' as DatePreset, label: 'Tarde (6pm)' },
-                { key: 'weekend' as DatePreset, label: 'Fin de semana' },
-                { key: 'nextWeek' as DatePreset, label: 'Próxima semana' },
+                { key: 'today' as DatePreset, label: 'Today' },
+                { key: 'tomorrow' as DatePreset, label: 'Tomorrow' },
+                { key: 'evening' as DatePreset, label: 'Evening' },
+                { key: 'weekend' as DatePreset, label: 'Weekend' },
+                { key: 'nextWeek' as DatePreset, label: 'Next Week' },
               ].map(preset => (
                 <button
                   key={preset.key}
@@ -167,7 +167,7 @@ export default function TaskModal({ isOpen, onClose, onSave, onDelete, initialTa
                   transition: 'all 0.15s',
                 }}
               >
-                📅 Elegir fecha...
+                Pick Date
               </button>
             </div>
             {datePreset === 'custom' && (
