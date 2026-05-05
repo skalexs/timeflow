@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import AgendaView from '@/components/AgendaView'
 import CalendarMonth from '@/components/CalendarMonth'
 import InboxView from '@/components/InboxView'
@@ -10,6 +10,7 @@ import TimePickerModal from '@/components/TimePickerModal'
 import TimelineView from '@/components/TimelineView'
 import MotorConfig from '@/components/MotorConfig'
 import CalendarSets from '@/components/CalendarSets'
+import CommandMenu, { useCommandMenu, type CommandItem } from '@/components/CommandMenu'
 import type { Task, InboxTask, BloqueDisp, GoogleEvent, CalendarSet } from '@/types'
 
 export default function TimeFlow() {
@@ -29,6 +30,22 @@ export default function TimeFlow() {
   const [googleEvents, setGoogleEvents] = useState<GoogleEvent[]>([])
   const [calendarSets, setCalendarSets] = useState<CalendarSet[]>([])
   const [inboxCount, setInboxCount] = useState(0)
+  const [commandMenuOpen, setCommandMenuOpen] = useState(false)
+
+  // Command menu items — Linear-style shortcuts
+  const commandItems: CommandItem[] = [
+    { id: 'new-task', label: 'Nueva tarea', description: 'Crear una tarea con fecha y hora', icon: '➕', shortcut: 'N', category: 'Tareas', action: openCreate },
+    { id: 'go-agenda', label: 'Ir a Agenda', description: 'Vista de agenda del día', icon: '📋', shortcut: 'G A', category: 'Navegación', action: () => setActiveTab('agenda') },
+    { id: 'go-timeline', label: 'Ir a Timeline', description: 'Vista de línea de tiempo', icon: '📅', shortcut: 'G T', category: 'Navegación', action: () => setActiveTab('timeline') },
+    { id: 'go-calendar', label: 'Ir a Calendario', description: 'Vista de calendario mensual', icon: '📆', shortcut: 'G C', category: 'Navegación', action: () => setActiveTab('calendario') },
+    { id: 'go-inbox', label: 'Ir a Inbox', description: 'Bandea de entrada', icon: '📥', shortcut: 'G I', category: 'Navegación', action: () => setActiveTab('inbox') },
+    { id: 'nlp-input', label: 'Entrada en lenguaje natural', description: 'Crear tarea con texto libre', icon: '✨', category: 'Tareas', action: () => { setNlpOpen(true); setActiveTab('timeline') } },
+    { id: 'theme', label: 'Cambiar tema', description: 'Rotar entre dark/light/mid', icon: '◐', category: 'Preferencias', action: cycleTheme },
+    { id: 'motor-config', label: 'Configurar Motor', description: 'Abrir configuración del motor de scheduling', icon: '⚙️', category: 'Preferencias', action: () => setMotorConfigOpen(true) },
+  ]
+
+  // Register Cmd+K shortcut
+  useCommandMenu(commandItems, commandMenuOpen, () => setCommandMenuOpen(v => !v))
 
   function cycleTheme() {
     const themes: ('dark'|'light'|'mid')[] = ['dark', 'light', 'mid']
@@ -215,6 +232,8 @@ export default function TimeFlow() {
       <TimePickerModal isOpen={timePickerOpen} taskTitle={schedulingTask?.title} taskNoise={schedulingTask?.mentalNoise} disponibilidad={dispForToday} onConfirm={handleScheduleConfirm} onCancel={() => { setTimePickerOpen(false); setSchedulingTask(null) }} defaultHour={9} />
 
       {motorConfigOpen && <MotorConfig onClose={() => setMotorConfigOpen(false)} />}
+
+      <CommandMenu items={commandItems} isOpen={commandMenuOpen} onClose={() => setCommandMenuOpen(false)} />
     </div>
   )
 }
