@@ -639,7 +639,7 @@ export default function TimelineView({ tasks, disponibilidad, googleEvents, sele
       </div>
 
       {/* ── Scrollable timeline ───────────────────────────────────────────── */}
-      <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', position: 'relative' }}>
+      <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', position: 'relative', minHeight: 0 }}>
         <div style={{ display: 'grid', gridTemplateColumns: '44px 1fr', position: 'relative', height: `${24 * HOUR_HEIGHT[viewDensity]}px`, transition: 'height 0.3s ease' }}>
           {/* Time slot labels */}
           <TimeSlotLabels slots={slots} />
