@@ -44,22 +44,21 @@ export default function CalendarMonth({ tasks, disponibilidad, onDayClick }: Cal
     if (bloques.length === 0) return { ring: 'transparent', fill: 'transparent', level: 0 }
     let total = 0
     for (const b of bloques) if (b.tipo === 'TOTAL') total += (b.horaFin - b.horaInicio)
-    if (total >= 240) return { ring: '#10b981', fill: '#10b98122', level: 4 }
-    if (total >= 60) return { ring: '#10b98188', fill: '#10b98115', level: 3 }
+    if (total >= 240) return { ring: 'var(--green)', fill: 'var(--green-soft)', level: 4 }
+    if (total >= 60) return { ring: 'var(--green)', fill: 'var(--green-soft)', level: 3 }
     const tipos = { TOTAL: 0, PARCIAL: 0, OCUPADO: 0 }
     for (const b of bloques) if (b.tipo in tipos) tipos[b.tipo]++
-    if (tipos.TOTAL >= 3) return { ring: '#10b981', fill: '#10b98122', level: 4 }
-    if (tipos.PARCIAL > tipos.TOTAL) return { ring: '#f59e0b66', fill: '#f59e0b15', level: 2 }
-    if (tipos.OCUPADO === bloques.length) return { ring: '#6b728022', fill: '#6b728010', level: 1 }
-    return { ring: '#f59e0b66', fill: '#f59e0b15', level: 2 }
+    if (tipos.TOTAL >= 3) return { ring: 'var(--green)', fill: 'var(--green-soft)', level: 4 }
+    if (tipos.PARCIAL > tipos.TOTAL) return { ring: 'var(--yellow)', fill: 'var(--yellow-soft)', level: 2 }
+    if (tipos.OCUPADO === bloques.length) return { ring: 'var(--border)', fill: 'transparent', level: 1 }
+    return { ring: 'var(--yellow)', fill: 'var(--yellow-soft)', level: 2 }
   }
 
   function getDensityBar(d: Date): string[] {
     const { level } = getDayDensity(d)
-    // density bar: up to 4 segments showing busy intensity
     const segments = []
     for (let i = 0; i < 4; i++) {
-      segments.push(i < level ? '#10b981' : '#2a2a3d')
+      segments.push(i < level ? 'var(--green)' : 'var(--border)')
     }
     return segments
   }
@@ -80,11 +79,11 @@ export default function CalendarMonth({ tasks, disponibilidad, onDayClick }: Cal
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 16px 12px', borderBottom: '1px solid var(--border)', background: 'var(--surface)' }}>
         <button onClick={() => navigate('prev')} style={{ background: 'var(--surface-2)', border: 'none', borderRadius: '10px', color: 'var(--text)', width: '36px', height: '36px', fontSize: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>‹</button>
-        <span style={{ fontSize: '14px', fontWeight: '700', color: '#f0f0f5', textTransform: 'capitalize' }}>{monthLabel}</span>
+        <span style={{ fontSize: '14px', fontWeight: '700', color: 'var(--text)', textTransform: 'capitalize' }}>{monthLabel}</span>
         <button onClick={() => navigate('next')} style={{ background: 'var(--surface-2)', border: 'none', borderRadius: '10px', color: 'var(--text)', width: '36px', height: '36px', fontSize: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>›</button>
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '2px', padding: '8px' }}>
-        {WEEK.map(d => <div key={d} style={{ textAlign: 'center', fontSize: '11px', fontWeight: '600', color: '#8888a0', padding: '6px 0' }}>{d}</div>)}
+        {WEEK.map(d => <div key={d} style={{ textAlign: 'center', fontSize: '11px', fontWeight: '600', color: 'var(--text-dim)', padding: '6px 0' }}>{d}</div>)}
         {grid.map((d, i) => {
           const density = getDayDensity(d)
           const dayTasks = getTasksForDay(d)
@@ -102,7 +101,7 @@ export default function CalendarMonth({ tasks, disponibilidad, onDayClick }: Cal
               style={{ borderRadius: '8px', position: 'relative', cursor: 'pointer', aspectRatio: '1', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '2px', transition: 'background 0.15s' }}
             >
               {density.ring !== 'transparent' && <div style={{ position: 'absolute', inset: '-2px', borderRadius: '10px', border: `2px solid ${density.ring}`, background: density.fill, pointerEvents: 'none' }} />}
-              <span style={{ fontSize: '14px', fontWeight: isToday(d) ? '700' : '400', color: isToday(d) ? '#f0f0f5' : isCurrentMonth(d) ? '#f0f0f5' : '#4a4a6a' }}>{d.getDate()}</span>
+              <span style={{ fontSize: '14px', fontWeight: isToday(d) ? 700 : 400, color: isToday(d) ? 'var(--text)' : isCurrentMonth(d) ? 'var(--text)' : 'var(--text-muted)' }}>{d.getDate()}</span>
               {dayTasks.length > 0 && <div style={{ display: 'flex', gap: '2px', flexWrap: 'wrap', justifyContent: 'center' }}>{dayTasks.map((c, j) => <div key={j} style={{ width: '4px', height: '4px', borderRadius: '50%', background: c }} />)}</div>}
               {density.level > 0 && <div aria-hidden="true" style={{ display: 'flex', gap: '1px', position: 'absolute', bottom: '4px' }}>{densityBar.map((c, j) => <div key={j} style={{ width: '4px', height: '2px', borderRadius: '1px', background: c }} />)}</div>}
             </div>

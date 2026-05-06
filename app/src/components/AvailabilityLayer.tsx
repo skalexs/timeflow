@@ -14,8 +14,8 @@ const AvailabilityLayer = memo(function AvailabilityLayer({ blocks }: Availabili
         const endMin = bloque.horaFin * 60
         const top = startMin / 1440 * 100
         const height = Math.max((endMin - startMin) / 1440 * 100, 0.1)
-        const colors: Record<string, string> = { TOTAL: '#10b98133', PARCIAL: '#f59e0b33', OCUPADO: '#6b728022' }
-        const borders: Record<string, string> = { TOTAL: '#10b981', PARCIAL: '#f59e0b', OCUPADO: '#6b7280' }
+        const colors: Record<string, string> = { TOTAL: 'var(--disp-total-alpha)', PARCIAL: 'var(--disp-parcial-alpha)', OCUPADO: 'var(--disp-ocupado-alpha)' }
+        const borders: Record<string, string> = { TOTAL: 'var(--green)', PARCIAL: 'var(--yellow)', OCUPADO: 'var(--gray)' }
         const patterns: Record<string, string> = {
           TOTAL: 'none',
           PARCIAL: '3,3',

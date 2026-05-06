@@ -454,7 +454,7 @@ export default function TimelineView({ tasks, disponibilidad, googleEvents, onTa
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     <div
       ref={containerRef}
-      style={{ display: 'flex', flexDirection: 'column', height: '100%', background: '#0a0a0f' }}
+      style={{ display: 'flex', flexDirection: 'column', height: '100%', background: 'var(--bg)' }}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
@@ -470,7 +470,7 @@ export default function TimelineView({ tasks, disponibilidad, googleEvents, onTa
           alignItems: 'center',
           justifyContent: 'space-between',
           padding: headerShrunk ? '6px 16px' : '12px 16px',
-          borderBottom: '1px solid #2a2a3d',
+          borderBottom: '1px solid var(--border)',
           background: 'var(--surface)',
           flexShrink: 0,
           transition: 'padding 0.2s ease, opacity 0.2s ease',
@@ -483,20 +483,20 @@ export default function TimelineView({ tasks, disponibilidad, googleEvents, onTa
         <button
           onClick={() => setSelected(d => new Date(d.getTime() - 86400000))}
           aria-label="Día anterior"
-          style={{ background: 'var(--surface2)', border: 'none', borderRadius: '10px', color: '#f0f0f5', width: '44px', height: '44px', fontSize: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}
+          style={{ background: 'var(--surface-2)', border: 'none', borderRadius: '10px', color: 'var(--text)', width: '44px', height: '44px', fontSize: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}
         >&lt;</button>
 
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: headerShrunk ? '0px' : '2px', transition: 'gap 0.2s ease' }}>
           <button
             onClick={openMonthPicker}
-            style={{ background: 'none', border: 'none', fontSize: headerShrunk ? '13px' : '14px', fontWeight: '700', color: '#f0f0f5', textTransform: 'capitalize', cursor: 'pointer', padding: '2px 8px', borderRadius: '6px', transition: 'font-size 0.2s ease' }}
+            style={{ background: 'none', border: 'none', fontSize: headerShrunk ? '13px' : '14px', fontWeight: '700', color: 'var(--text)', textTransform: 'capitalize', cursor: 'pointer', padding: '2px 8px', borderRadius: '6px', transition: 'font-size 0.2s ease' }}
           >
             {dayLabel}
           </button>
           {!headerShrunk && (
             <button
               onClick={() => setSelected(new Date())}
-              style={{ background: 'none', border: 'none', fontSize: '11px', color: '#6366f1', cursor: 'pointer', fontWeight: 600 }}
+              style={{ background: 'none', border: 'none', fontSize: '11px', color: 'var(--accent)', cursor: 'pointer', fontWeight: 600 }}
             >
               Hoy
             </button>
@@ -506,15 +506,15 @@ export default function TimelineView({ tasks, disponibilidad, googleEvents, onTa
         <button
           onClick={() => setSelected(d => new Date(d.getTime() + 86400000))}
           aria-label="Día siguiente"
-          style={{ background: 'var(--surface2)', border: 'none', borderRadius: '10px', color: '#f0f0f5', width: '44px', height: '44px', fontSize: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}
+          style={{ background: 'var(--surface-2)', border: 'none', borderRadius: '10px', color: 'var(--text)', width: '44px', height: '44px', fontSize: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}
         >&gt;</button>
       </div>
 
       {/* ── Pull-down refresh indicator ─────────────────────────────────────── */}
       {atTop && (
-        <div style={{ textAlign: 'center', padding: '2px 0', fontSize: '10px', color: '#6366f1', background: 'var(--surface)', borderBottom: '1px solid #2a2a3d', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', minHeight: '18px' }}>
+        <div style={{ textAlign: 'center', padding: '2px 0', fontSize: '10px', color: 'var(--accent)', background: 'var(--surface)', borderBottom: '1px solid var(--border)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', minHeight: '18px' }}>
           {refreshing ? (
-            <span style={{ display: 'inline-block', width: '12px', height: '12px', border: '2px solid #6366f1', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+            <span style={{ display: 'inline-block', width: '12px', height: '12px', border: '2px solid var(--accent)', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
           ) : (
             <span>↓ {onRefresh ? 'Pull down to refresh' : 'Sincronizando...'}</span>
           )}
@@ -532,17 +532,17 @@ export default function TimelineView({ tasks, disponibilidad, googleEvents, onTa
             justifyContent: 'center',
             gap: '8px',
             padding: '8px 16px',
-            background: 'var(--surface2)',
-            borderBottom: '1px solid #2a2a3d',
+            background: 'var(--surface-2)',
+            borderBottom: '1px solid var(--border)',
             flexShrink: 0,
           }}
         >
           <span style={{ fontSize: '14px' }}>📡</span>
-          <span style={{ fontSize: '12px', fontWeight: 600, color: '#f59e0b' }}>Sin conexión</span>
+          <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--yellow)' }}>Sin conexión</span>
           {offlineQueueCount > 0 && (
             <span style={{
-              background: '#6366f133',
-              color: '#6366f1',
+              background: 'var(--accent-soft)',
+              color: 'var(--accent)',
               borderRadius: '8px',
               padding: '2px 8px',
               fontSize: '11px',
@@ -561,20 +561,20 @@ export default function TimelineView({ tasks, disponibilidad, googleEvents, onTa
           onClick={() => setShowMonthPicker(false)}
         >
           <div
-            style={{ background: 'var(--surface2)', borderRadius: '16px', padding: '20px', width: '320px', maxWidth: '90vw', boxShadow: '0 20px 60px rgba(0,0,0,0.6)', border: '1px solid #2a2a3d' }}
+            style={{ background: 'var(--surface-2)', borderRadius: '16px', padding: '20px', width: '320px', maxWidth: '90vw', boxShadow: '0 20px 60px rgba(0,0,0,0.6)', border: '1px solid var(--border)' }}
             onClick={e => e.stopPropagation()}
           >
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
               <button
                 onClick={() => { if (pickerMonth === 0) { setPickerMonth(11); setPickerYear(y => y - 1) } else setPickerMonth(m => m - 1) }}
                 aria-label="Mes anterior"
-                style={{ background: 'var(--surface3)', border: 'none', borderRadius: '10px', color: '#f0f0f5', width: '44px', height: '44px', fontSize: '16px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                style={{ background: 'var(--surface-3)', border: 'none', borderRadius: '10px', color: 'var(--text)', width: '44px', height: '44px', fontSize: '16px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
               >&lt;</button>
-              <span style={{ fontSize: '16px', fontWeight: '700', color: '#f0f0f5' }}>{MONTHS_ES[pickerMonth]} {pickerYear}</span>
+              <span style={{ fontSize: '16px', fontWeight: '700', color: 'var(--text)' }}>{MONTHS_ES[pickerMonth]} {pickerYear}</span>
               <button
                 onClick={() => { if (pickerMonth === 11) { setPickerMonth(0); setPickerYear(y => y + 1) } else setPickerMonth(m => m + 1) }}
                 aria-label="Mes siguiente"
-                style={{ background: 'var(--surface3)', border: 'none', borderRadius: '10px', color: '#f0f0f5', width: '44px', height: '44px', fontSize: '16px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                style={{ background: 'var(--surface-3)', border: 'none', borderRadius: '10px', color: 'var(--text)', width: '44px', height: '44px', fontSize: '16px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
               >&gt;</button>
             </div>
 
@@ -594,10 +594,10 @@ export default function TimelineView({ tasks, disponibilidad, googleEvents, onTa
                     key={day.toISOString()}
                     onClick={() => selectMonthDay(day)}
                     style={{
-                      background: isSelected ? '#6366f1' : isTodayDay ? '#2a2a3d' : 'transparent',
-                      border: isTodayDay && !isSelected ? '1px solid #6366f1' : 'none',
+                      background: isSelected ? 'var(--accent)' : isTodayDay ? 'var(--surface-3)' : 'transparent',
+                      border: isTodayDay && !isSelected ? '1px solid var(--accent)' : 'none',
                       borderRadius: '8px',
-                      color: isSelected ? '#fff' : '#f0f0f5',
+                      color: isSelected ? '#fff' : 'var(--text)',
                       fontSize: '13px',
                       fontWeight: isSelected || isTodayDay ? 700 : 400,
                       height: '36px',
@@ -613,7 +613,7 @@ export default function TimelineView({ tasks, disponibilidad, googleEvents, onTa
             <div style={{ marginTop: '16px', textAlign: 'center' }}>
               <button
                 onClick={() => { selectMonthDay(new Date()); setPickerYear(new Date().getFullYear()); setPickerMonth(new Date().getMonth()) }}
-                style={{ background: '#6366f133', border: '1px solid #6366f1', borderRadius: '8px', color: '#6366f1', fontSize: '12px', fontWeight: 600, padding: '6px 16px', cursor: 'pointer' }}
+                style={{ background: 'var(--accent-soft)', border: '1px solid var(--accent)', borderRadius: '8px', color: 'var(--accent)', fontSize: '12px', fontWeight: 600, padding: '6px 16px', cursor: 'pointer' }}
               >
                 Ir a hoy
               </button>
@@ -623,9 +623,9 @@ export default function TimelineView({ tasks, disponibilidad, googleEvents, onTa
       )}
 
       {/* ── Header columns ─────────────────────────────────────────────────── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '44px 1fr', borderBottom: '1px solid #2a2a3d', background: 'var(--surface)', flexShrink: 0 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '44px 1fr', borderBottom: '1px solid var(--border)', background: 'var(--surface)', flexShrink: 0 }}>
         <div />
-        <div style={{ display: 'flex', alignItems: 'center', padding: '8px 4px', borderLeft: '1px solid #2a2a3d' }}>
+        <div style={{ display: 'flex', alignItems: 'center', padding: '8px 4px', borderLeft: '1px solid var(--border)' }}>
           <span style={{ fontSize: '10px', color: 'var(--text-dim)' }}>📅 {selected.toLocaleDateString('es-ES', { weekday: 'short' })} {selected.getDate()}</span>
         </div>
       </div>
@@ -718,8 +718,8 @@ export default function TimelineView({ tasks, disponibilidad, googleEvents, onTa
           return (
             <div style={{
               padding: '16px',
-              borderTop: '1px solid #2a2a3d',
-              background: '#0d0d14',
+              borderTop: '1px solid var(--border)',
+              background: 'var(--surface-2)',
             }}>
               <div style={{
                 display: 'flex',
@@ -727,14 +727,14 @@ export default function TimelineView({ tasks, disponibilidad, googleEvents, onTa
                 gap: '8px',
                 marginBottom: '12px',
               }}>
-                <span style={{ fontSize: '14px', fontWeight: 700, color: '#f0f0f5' }}>📋</span>
-                <span style={{ fontSize: '13px', fontWeight: 700, color: '#f0f0f5', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                <span style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text)' }}>📋</span>
+                <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                   Tareas Sin Fecha
                 </span>
                 <span style={{
                   marginLeft: 'auto',
-                  background: '#6366f133',
-                  color: '#6366f1',
+                  background: 'var(--accent-soft)',
+                  color: 'var(--accent)',
                   borderRadius: '8px',
                   padding: '2px 8px',
                   fontSize: '11px',
@@ -754,14 +754,14 @@ export default function TimelineView({ tasks, disponibilidad, googleEvents, onTa
                       alignItems: 'center',
                       gap: '10px',
                       padding: '10px 12px',
-                      background: 'var(--surface2)',
+                      background: 'var(--surface)',
                       borderRadius: '10px',
                       border: `1px solid ${task.color}44`,
                       cursor: 'pointer',
                       transition: 'all 0.15s ease',
                     }}
-                    onMouseEnter={e => { e.currentTarget.style.borderColor = task.color + '88'; e.currentTarget.style.background = '#232330' }}
-                    onMouseLeave={e => { e.currentTarget.style.borderColor = task.color + '44'; e.currentTarget.style.background = '#1c1c26' }}
+                    onMouseEnter={e => { e.currentTarget.style.borderColor = task.color + '88'; e.currentTarget.style.background = 'var(--surface-2)' }}
+                    onMouseLeave={e => { e.currentTarget.style.borderColor = task.color + '44'; e.currentTarget.style.background = 'var(--surface)' }}
                   >
                     <div style={{
                       width: '8px',
@@ -774,7 +774,7 @@ export default function TimelineView({ tasks, disponibilidad, googleEvents, onTa
                       flex: 1,
                       fontSize: '13px',
                       fontWeight: 500,
-                      color: '#f0f0f5',
+                      color: 'var(--text)',
                       overflow: 'hidden',
                       textOverflow: 'ellipsis',
                       whiteSpace: 'nowrap',
@@ -784,10 +784,10 @@ export default function TimelineView({ tasks, disponibilidad, googleEvents, onTa
                     <button
                       onClick={e => { e.stopPropagation(); onTaskReschedule?.(task) }}
                       style={{
-                        background: '#6366f133',
-                        border: '1px solid #6366f155',
+                        background: 'var(--accent-soft)',
+                        border: '1px solid var(--accent)',
                         borderRadius: '6px',
-                        color: '#6366f1',
+                        color: 'var(--accent)',
                         fontSize: '10px',
                         fontWeight: 600,
                         padding: '3px 8px',

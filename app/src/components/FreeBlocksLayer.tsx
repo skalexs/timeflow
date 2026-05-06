@@ -25,8 +25,8 @@ const FreeBlocksLayer = memo(function FreeBlocksLayer({ freeBlocks, onFreeBlockC
               height: `${height}%`,
               left: '3px',
               right: '3px',
-              background: '#E5E5EA',
-              border: '1px dashed #8E8E93',
+              background: 'var(--surface-2)',
+              border: '1px dashed var(--text-dim)',
               borderRadius: '6px',
               zIndex: 5,
               display: 'flex',
@@ -37,7 +37,7 @@ const FreeBlocksLayer = memo(function FreeBlocksLayer({ freeBlocks, onFreeBlockC
           >
             <span style={{
               fontSize: '10px',
-              color: '#8E8E93',
+              color: 'var(--text-dim)',
               fontWeight: 600,
               textTransform: 'uppercase',
               letterSpacing: '0.5px',

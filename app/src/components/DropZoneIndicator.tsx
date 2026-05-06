@@ -16,11 +16,11 @@ const DropZoneIndicator = memo(function DropZoneIndicator({ dropZoneMin }: DropZ
         left: '3px',
         right: '3px',
         height: '4px',
-        background: '#6366f1',
+        background: 'var(--accent)',
         borderRadius: '2px',
         zIndex: 20,
         pointerEvents: 'none',
-        boxShadow: '0 0 8px #6366f1',
+        boxShadow: '0 0 8px var(--accent)',
       }}
     />
   )

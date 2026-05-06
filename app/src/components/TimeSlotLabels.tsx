@@ -24,7 +24,7 @@ const TimeSlotLabels = memo(function TimeSlotLabels({ slots }: TimeSlotLabelsPro
           {slot.m === 0 && (
             <span style={{
               fontSize: '10px',
-              color: '#8888a0',
+              color: 'var(--text-dim)',
               fontVariantNumeric: 'tabular-nums',
               display: 'block',
               textAlign: 'right',
