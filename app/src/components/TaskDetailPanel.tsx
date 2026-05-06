@@ -142,7 +142,7 @@ const TaskDetailPanel = memo(function TaskDetailPanel({
           {/* Time info */}
           {startDate && (
             <div style={{ marginBottom: '16px' }}>
-              <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px' }}>Horario</div>
+              <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px' }}>Horario</div>
               <div style={{
                 background: 'var(--surface2)',
                 borderRadius: '10px',

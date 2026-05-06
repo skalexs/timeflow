@@ -70,7 +70,7 @@ const TaskBlocksLayer = memo(function TaskBlocksLayer({
                 left: '3px',
                 right: '3px',
                 borderRadius: '8px',
-                background: 'repeating-linear-gradient(135deg, #1c1c26 0px, #1c1c26 8px, #232330 8px, #232330 16px)',
+                background: 'repeating-linear-gradient(135deg, var(--surface) 0px, var(--surface) 8px, var(--surface-2) 8px, var(--surface-2) 16px)',
                 border: `2px solid ${task.color}66`,
                 overflow: 'hidden',
                 cursor: isDragging ? 'grabbing' : 'pointer',
@@ -104,7 +104,7 @@ const TaskBlocksLayer = memo(function TaskBlocksLayer({
               left: '3px',
               right: '3px',
               borderRadius: '8px',
-              background: isPast ? '#14141c' : '#1c1c26',
+              background: isPast ? 'var(--bg)' : 'var(--surface)',
               borderLeft: `4px solid ${isPast ? task.color + '88' : task.color}`,
               overflow: 'hidden',
               cursor: isDragging ? 'grabbing' : 'pointer',
@@ -133,7 +133,7 @@ const TaskBlocksLayer = memo(function TaskBlocksLayer({
                 <span style={{
                   fontSize: '11px',
                   fontWeight: '600',
-                  color: isPast ? '#8888a0' : '#f0f0f5',
+                  color: isPast ? 'var(--text-dim)' : 'var(--text)',
                   lineHeight: 1.2,
                   overflow: 'hidden',
                   textOverflow: 'ellipsis',
@@ -143,7 +143,7 @@ const TaskBlocksLayer = memo(function TaskBlocksLayer({
                 </span>
                 <span style={{
                   fontSize: '9px',
-                  color: '#8888a0',
+                  color: 'var(--text-dim)',
                   fontVariantNumeric: 'tabular-nums',
                 }}>
                   {formatTime(new Date(task.startTime!))} - {formatTime(new Date(task.endTime!))} · {duration}min

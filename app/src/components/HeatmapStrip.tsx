@@ -14,7 +14,7 @@ const HeatmapStrip = memo(function HeatmapStrip({ blocks }: HeatmapStripProps) {
         const endMin = bloque.horaFin * 60
         const top = startMin / 1440 * 100
         const height = Math.max((endMin - startMin) / 1440 * 100, 0.1)
-        const colors: Record<string, string> = { TOTAL: '#10b981E6', PARCIAL: '#f59e0b99', OCUPADO: '#6b728066' }
+        const colors: Record<string, string> = { TOTAL: 'var(--green)', PARCIAL: 'var(--yellow)', OCUPADO: 'var(--gray)' }
         return (
           <div
             key={i}
@@ -23,7 +23,7 @@ const HeatmapStrip = memo(function HeatmapStrip({ blocks }: HeatmapStripProps) {
               top: `${top}%`,
               width: '100%',
               height: `${height}%`,
-              background: colors[bloque.tipo] ?? '#6b728066',
+              background: colors[bloque.tipo] ?? 'var(--gray)',
             }}
           />
         )
