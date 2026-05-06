@@ -248,6 +248,7 @@ export default function TimeFlow() {
               disponibilidad={disponibilidad}
               googleEvents={googleEvents}
               selectedDate={selectedDate}
+              isToday={selectedDate.toDateString() === new Date().toDateString()}
               onTaskClick={openDetail}
               onTaskComplete={handleTaskComplete}
               onTaskReschedule={handleTaskReschedule}

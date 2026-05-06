@@ -124,7 +124,8 @@ interface TimelineViewProps {
   tasks: Task[]
   disponibilidad: Record<string, BloqueDisp[]>
   googleEvents?: GoogleEvent[]
-  selectedDate?: Date
+  selectedDate: Date
+  isToday?: boolean
   onTaskClick: (task: Task) => void
   onTaskComplete?: (task: Task) => void
   onTaskReschedule?: (task: Task) => void
@@ -134,7 +135,7 @@ interface TimelineViewProps {
 
 const SWIPE_THRESHOLD = 50
 
-export default function TimelineView({ tasks, disponibilidad, googleEvents, selectedDate: externalDate, onTaskClick, onTaskComplete, onTaskReschedule, onRefresh, onFreeBlockClick }: TimelineViewProps) {
+export default function TimelineView({ tasks, disponibilidad, googleEvents, selectedDate: externalDate, isToday: isTodayProp, onTaskClick, onTaskComplete, onTaskReschedule, onRefresh, onFreeBlockClick }: TimelineViewProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const headerRef = useRef<HTMLDivElement>(null)
@@ -224,7 +225,7 @@ export default function TimelineView({ tasks, disponibilidad, googleEvents, sele
   const slots = Array.from({ length: 48 }, (_, i) => ({ h: Math.floor(i / 2), m: (i % 2) * 30 }))
   const dayLabel = selected.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })
   const nowMinutes = 60 * currentTime.getHours() + currentTime.getMinutes()
-  const isToday = toDateKey(selected) === toDateKey(currentTime)
+  const isToday = isTodayProp ?? (toDateKey(selected) === toDateKey(currentTime))
 
   const [atTop, setAtTop] = useState(true)
 
