@@ -230,7 +230,7 @@ export default function TimeFlow() {
         )}
 
         {/* Views */}
-        <div style={{ flex: 1, overflow: 'hidden' }} className="view-enter">
+        <div style={{ flex: 1, overflow: 'auto' }} className="view-enter">
           {activeTab === 'agenda' && (
             <AgendaView
               tasks={tasks}
