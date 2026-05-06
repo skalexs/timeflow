@@ -1,7 +1,6 @@
 'use client'
-import { useRef, useState, useEffect, useCallback, memo } from 'react'
+import { useRef, useCallback, memo } from 'react'
 import { useSwipeGesture } from '@/hooks/useSwipeGesture'
-import SwipeableTask from './SwipeableTask'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -16,138 +15,256 @@ interface Task {
 }
 
 interface BloqueDisp {
-  horaInicio: number   // 0-23
-  horaFin: number       // 1-24
+  horaInicio: number
+  horaFin: number
   tipo: 'TOTAL' | 'PARCIAL' | 'OCUPADO'
   label: string
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const START_HOUR = 4   // grid starts at 04:00
-const END_HOUR   = 23  // grid ends at 23:00
-const HALF_HOURS = (END_HOUR - START_HOUR) * 2  // 38 half-hour slots
-const TOTAL_MINS = HALF_HOURS * 30              // 1140 minutes
+const START_HOUR = 4
+const END_HOUR   = 23
 
-const TIPO_STYLES: Record<string, { bg: string; border: string; textColor: string }> = {
-  TOTAL:   { bg: 'rgba(16,185,129,0.10)', border: '#10b981', textColor: '#10b981' },
-  PARCIAL: { bg: 'rgba(245,158,11,0.10)', border: '#f59e0b', textColor: '#f59e0b' },
-  OCUPADO: { bg: 'rgba(107,114,128,0.10)', border: '#6b7280', textColor: '#6b7280' },
+const DISP_DOT: Record<string, { color: string; label: string }> = {
+  TOTAL:   { color: 'var(--green)',   label: 'Foco' },
+  PARCIAL: { color: 'var(--yellow)',  label: 'Parcial' },
+  OCUPADO: { color: 'var(--gray)',   label: 'Ocupado' },
+}
+
+const DISP_BG: Record<string, string> = {
+  TOTAL:   'var(--disp-total)',
+  PARCIAL: 'var(--disp-parcial)',
+  OCUPADO: 'var(--disp-ocupado)',
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-function formatTime(date: Date) {
-  return `${date.getUTCHours().toString().padStart(2, '0')}:${date.getUTCMinutes().toString().padStart(2, '0')}`
+function formatTime(h: number, m = 0) {
+  return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`
 }
 
-function minsFromHour(h: number, m = 0) {
-  return (h - START_HOUR) * 60 + m
+function formatDuration(startTime: string | null, endTime: string | null): string {
+  if (!startTime || !endTime) return ''
+  const s = new Date(startTime), e = new Date(endTime)
+  const mins = Math.round((e.getTime() - s.getTime()) / 60000)
+  if (mins < 60) return `${mins}min`
+  const h = Math.floor(mins / 60), rest = mins % 60
+  return rest > 0 ? `${h}h ${rest}min` : `${h}h`
 }
 
-function pctInGrid(minutes: number) {
-  return Math.max(0, Math.min(100, (minutes / TOTAL_MINS) * 100))
-}
-
-const WEEK_DAY = (d: Date) => ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'][d.getDay()]
-
-// ─── NowIndicator — isolated RAF loop, only re-renders itself ───────────────
-
-interface NowIndicatorProps { slotCount?: number }
-
-const NowIndicator = memo(function NowIndicator({ slotCount = HALF_HOURS }: NowIndicatorProps) {
-  const ref = useRef<HTMLDivElement>(null)
-  const rafRef = useRef<number>(0)
-  const [, forceUpdate] = useState(0)
-
-  useEffect(() => {
-    function update() {
-      const now = new Date()
-      const h = now.getUTCHours()
-      const m = now.getUTCMinutes()
-      const totalMins = h * 60 + m
-      const startMins = START_HOUR * 60
-
-      if (totalMins >= startMins && totalMins <= TOTAL_MINS) {
-        const pct = (totalMins / TOTAL_MINS) * 100
-        if (ref.current) {
-          ref.current.style.top = `${pct}%`
-          ref.current.style.display = 'block'
-        }
-      } else {
-        if (ref.current) ref.current.style.display = 'none'
-      }
-      // Re-render roughly once per minute to update the dot position
-      forceUpdate(n => n + 1)
-      rafRef.current = requestAnimationFrame(update)
+function buildFreeBlocks(bloques: BloqueDisp[]): Array<{ start: number; end: number; tipo: 'TOTAL' | 'PARCIAL' }> {
+  const free: Array<{ start: number; end: number; tipo: 'TOTAL' | 'PARCIAL' }> = []
+  for (const b of bloques) {
+    if (b.tipo === 'TOTAL' || b.tipo === 'PARCIAL') {
+      const mins = (b.horaFin - b.horaInicio) * 60
+      if (mins >= 30) free.push({ start: b.horaInicio, end: b.horaFin, tipo: b.tipo })
     }
+  }
+  return free
+}
 
-    rafRef.current = requestAnimationFrame(update)
-    return () => cancelAnimationFrame(rafRef.current)
-  }, [])
+function mergeFreeBlocks(blocks: Array<{ start: number; end: number; tipo: 'TOTAL' | 'PARCIAL' }>) {
+  if (blocks.length === 0) return []
+  const sorted = [...blocks].sort((a, b) => a.start - b.start)
+  const merged = [sorted[0]]
+  for (let i = 1; i < sorted.length; i++) {
+    const last = merged[merged.length - 1]
+    if (sorted[i].start <= last.end && sorted[i].tipo === last.tipo) {
+      last.end = Math.max(last.end, sorted[i].end)
+    } else {
+      merged.push(sorted[i])
+    }
+  }
+  return merged
+}
+
+const WEEK_DAY_SHORT = (d: Date) => ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'][d.getDay()]
+
+// ─── SwipeableRow ─────────────────────────────────────────────────────────────
+
+interface SwipeableRowProps {
+  children: React.ReactNode
+  onSwipeLeft?: () => void
+  onSwipeRight?: () => void
+}
+
+const SwipeableRow = memo(function SwipeableRow({ children, onSwipeLeft, onSwipeRight }: SwipeableRowProps) {
+  const ref = useRef<HTMLDivElement>(null)
+
+  const { onTouchStart, onTouchMove, onTouchEnd } = useSwipeGesture({
+    onSwipeLeft:  onSwipeLeft  ? () => onSwipeLeft()  : undefined,
+    onSwipeRight: onSwipeRight ? () => onSwipeRight() : undefined,
+  })
+
+  const handleTouchStart = useCallback((e: React.TouchEvent) => { onTouchStart(e) }, [onTouchStart])
+  const handleTouchMove  = useCallback((e: React.TouchEvent) => { if (ref.current) onTouchMove(e, ref.current) }, [onTouchMove])
+  const handleTouchEnd   = useCallback((e: React.TouchEvent) => { if (ref.current) onTouchEnd(e, ref.current) }, [onTouchEnd])
 
   return (
-    <div
-      ref={ref}
-      style={{
-        display: 'none',
-        position: 'absolute',
-        top: 0,
-        left: 44,
-        right: 0,
-        height: 2,
-        background: '#ef4444',
-        zIndex: 20,
-        pointerEvents: 'none',
-        boxShadow: '0 0 6px #ef4444',
-      }}
-    >
-      <div style={{
-        width: 10, height: 10, borderRadius: '50%',
-        background: '#ef4444', position: 'absolute',
-        left: -5, top: -4,
-      }} />
+    <div style={{ position: 'relative', overflow: 'hidden', borderRadius: 'var(--radius-md)' }}>
+      {onSwipeLeft && (
+        <div style={{
+          position: 'absolute', inset: 0,
+          background: 'var(--green)',
+          display: 'flex', alignItems: 'center', justifyContent: 'flex-end',
+          paddingRight: 20, borderRadius: 'var(--radius-md)',
+          fontSize: 18, color: 'white',
+        }}>✓</div>
+      )}
+      {onSwipeRight && (
+        <div style={{
+          position: 'absolute', inset: 0,
+          background: 'var(--yellow)',
+          display: 'flex', alignItems: 'center', justifyContent: 'flex-start',
+          paddingLeft: 20, borderRadius: 'var(--radius-md)',
+          fontSize: 18, color: 'white',
+        }}>↻</div>
+      )}
+      <div
+        ref={ref}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        style={{
+          position: 'relative',
+          background: 'var(--surface)',
+          borderRadius: 'var(--radius-md)',
+          touchAction: 'pan-y',
+        }}
+      >
+        {children}
+      </div>
     </div>
   )
 })
 
-// ─── Gradient background from availability blocks ─────────────────────────────
+// ─── AvailabilityDot ─────────────────────────────────────────────────────────
 
-function buildGradient(bloques: BloqueDisp[]): string {
-  if (!bloques || bloques.length === 0) return 'transparent'
-
-  // Build linear gradient: green→yellow→gray zones
-  const stops: string[] = []
-  const colors: Record<string, string> = {
-    TOTAL:   'rgba(16,185,129,0.18)',
-    PARCIAL: 'rgba(245,158,11,0.12)',
-    OCUPADO: 'rgba(107,114,128,0.08)',
-  }
-
-  // Normalize blocks: fill gaps
-  const slots: Array<{ start: number; end: number; tipo: string }> = []
-  for (const b of bloques) {
-    const startNorm = minsFromHour(b.horaInicio)
-    const endNorm   = minsFromHour(b.horaFin)
-    if (slots.length > 0 && slots[slots.length - 1].end === startNorm && slots[slots.length - 1].tipo === b.tipo) {
-      slots[slots.length - 1].end = endNorm
-    } else {
-      slots.push({ start: startNorm, end: endNorm, tipo: b.tipo })
-    }
-  }
-
-  for (const slot of slots) {
-    const startPct = (slot.start / TOTAL_MINS) * 100
-    const endPct   = (slot.end   / TOTAL_MINS) * 100
-    const color    = colors[slot.tipo] ?? 'transparent'
-    stops.push(`${color} ${startPct.toFixed(1)}%`)
-    stops.push(`${color} ${endPct.toFixed(1)}%`)
-  }
-
-  return `linear-gradient(to bottom, ${stops.join(', ')})`
+function AvailabilityDot({ tipo }: { tipo: 'TOTAL' | 'PARCIAL' | 'OCUPADO' }) {
+  const { color, label } = DISP_DOT[tipo] ?? DISP_DOT.OCUPADO
+  return (
+    <span className="disp-dot" style={{ color }}>
+      <span style={{ width: 6, height: 6, borderRadius: '50%', background: color, display: 'inline-block', flexShrink: 0 }} />
+      {label}
+    </span>
+  )
 }
 
-// ─── Main AgendaView ─────────────────────────────────────────────────────────
+// ─── TaskCard ────────────────────────────────────────────────────────────────
+
+interface TaskCardProps {
+  task: Task
+  onClick: () => void
+  onComplete?: () => void
+  onReschedule?: () => void
+}
+
+const TaskCard = memo(function TaskCard({ task, onClick, onComplete, onReschedule }: TaskCardProps) {
+  const start = task.startTime ? new Date(task.startTime) : null
+  const end   = task.endTime   ? new Date(task.endTime)   : null
+  const isDone = task.done
+
+  const startH = start ? start.getUTCHours() : 9
+  const startM = start ? start.getUTCMinutes() : 0
+  const endH   = end   ? end.getUTCHours()   : 10
+  const endM   = end   ? end.getUTCMinutes() : 0
+
+  return (
+    <SwipeableRow onSwipeLeft={onComplete} onSwipeRight={onReschedule}>
+      <div className="task-card" onClick={onClick} style={{ padding: '12px 14px' }}>
+        {/* Left: time column */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, minWidth: 0 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', flexShrink: 0 }}>
+            <span style={{ fontSize: 13, fontWeight: 700, color: isDone ? 'var(--text-muted)' : 'var(--text)', fontVariantNumeric: 'tabular-nums' }}>
+              {formatTime(startH, startM)}
+            </span>
+            <span style={{ fontSize: 11, color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>—</span>
+            <span style={{ fontSize: 13, fontWeight: 700, color: isDone ? 'var(--text-muted)' : 'var(--text)', fontVariantNumeric: 'tabular-nums' }}>
+              {formatTime(endH, endM)}
+            </span>
+          </div>
+
+          {/* Divider */}
+          <div style={{ width: 1, height: 36, background: 'var(--border)', flexShrink: 0 }} />
+
+          {/* Main content */}
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+              <span style={{ fontSize: 14 }}>{task.iconId}</span>
+              <span style={{
+                fontSize: 14, fontWeight: 600,
+                color: isDone ? 'var(--text-muted)' : 'var(--text)',
+                textDecoration: isDone ? 'line-through' : 'none',
+                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+              }}>
+                {task.title}
+              </span>
+            </div>
+            {/* Duration bar */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div style={{ flex: 1, height: 3, background: 'var(--surface-3)', borderRadius: 2, overflow: 'hidden', maxWidth: 100 }}>
+                <div style={{
+                  width: '100%', height: '100%',
+                  background: isDone ? 'var(--gray)' : task.color,
+                  borderRadius: 2,
+                }} />
+              </div>
+              <span style={{ fontSize: 11, color: 'var(--text-muted)', flexShrink: 0 }}>
+                {formatDuration(task.startTime, task.endTime)}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Right: chevron */}
+        <div style={{ display: 'flex', alignItems: 'center', flexShrink: 0, marginLeft: 8 }}>
+          <span style={{ fontSize: 16, color: 'var(--text-muted)' }}>›</span>
+        </div>
+      </div>
+    </SwipeableRow>
+  )
+})
+
+// ─── FreeBlockRow ─────────────────────────────────────────────────────────────
+
+interface FreeBlockRowProps {
+  start: number
+  end: number
+  tipo: 'TOTAL' | 'PARCIAL'
+  onClick: () => void
+}
+
+function FreeBlockRow({ start, end, tipo, onClick }: FreeBlockRowProps) {
+  const disp = DISP_DOT[tipo]
+  return (
+    <div
+      onClick={onClick}
+      style={{
+        padding: '10px 14px',
+        background: DISP_BG[tipo],
+        borderLeft: `3px solid ${disp.color}`,
+        borderRadius: 'var(--radius-md)',
+        cursor: 'pointer',
+        animation: 'taskIn 0.2s var(--t-spring) both',
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>{formatTime(start)}</span>
+          <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>—</span>
+          <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>{formatTime(end)}</span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>{tipo === 'TOTAL' ? 'Foco' : 'Parcial'}</span>
+          <AvailabilityDot tipo={tipo} />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── AgendaView ──────────────────────────────────────────────────────────────
 
 interface AgendaViewProps {
   tasks: Task[]
@@ -161,237 +278,185 @@ interface AgendaViewProps {
 
 function AgendaViewInner({ tasks, disponibilidad, selectedDate, onTaskClick, onAddClick, onTaskComplete, onTaskReschedule }: AgendaViewProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
+  const dateKey = selectedDate.toISOString().split('T')[0]
 
-  // 3 consecutive days centered around selected
-  const days: Date[] = []
-  for (let i = -1; i <= 1; i++) {
-    const d = new Date(selectedDate); d.setDate(d.getDate() + i); days.push(d)
-  }
-
-  const dateKey = (d: Date) => d.toISOString().split('T')[0]
-  const isToday = (d: Date) => {
+  const isToday = (() => {
     const t = new Date()
-    return d.getDate() === t.getDate() && d.getMonth() === t.getMonth() && d.getFullYear() === t.getFullYear()
-  }
-  const isSelected = (d: Date) =>
-    d.getDate() === selectedDate.getDate() && d.getMonth() === selectedDate.getMonth()
+    return selectedDate.getDate() === t.getDate() &&
+           selectedDate.getMonth() === t.getMonth() &&
+           selectedDate.getFullYear() === t.getFullYear()
+  })()
 
-  function tasksForDay(day: Date): Task[] {
-    return tasks.filter(t => {
-      if (!t.startTime) return false
-      const s = new Date(t.startTime)
-      return s.getFullYear() === day.getFullYear() &&
-             s.getMonth() === day.getMonth() &&
-             s.getDate() === day.getDate()
-    })
+  const dayTasks = tasks.filter(t => {
+    if (!t.startTime) return false
+    const s = new Date(t.startTime)
+    return s.getFullYear() === selectedDate.getFullYear() &&
+           s.getMonth() === selectedDate.getMonth() &&
+           s.getDate() === selectedDate.getDate()
+  })
+
+  const bloques: BloqueDisp[] = disponibilidad[dateKey] ?? []
+
+  // Build interleaved slots (tasks + free blocks)
+  function buildInterleaved(): Array<{ type: 'task'; task: Task; freeTipo?: 'TOTAL' | 'PARCIAL' } | { type: 'free'; start: number; end: number; tipo: 'TOTAL' | 'PARCIAL' }> {
+    const result: Array<{ type: 'task'; task: Task; freeTipo?: 'TOTAL' | 'PARCIAL' } | { type: 'free'; start: number; end: number; tipo: 'TOTAL' | 'PARCIAL' }> = []
+    const sorted = [...dayTasks].filter(t => t.startTime).sort((a, b) =>
+      new Date(a.startTime!).getTime() - new Date(b.startTime!).getTime()
+    )
+    const freeBlocks = mergeFreeBlocks(buildFreeBlocks(bloques))
+    let currentMin = START_HOUR * 60
+
+    for (const task of sorted) {
+      const taskStart = new Date(task.startTime!)
+      const taskEnd   = new Date(task.endTime!)
+      const ts = taskStart.getUTCHours() * 60 + taskStart.getUTCMinutes()
+      const te = taskEnd.getUTCHours()   * 60 + taskEnd.getUTCMinutes()
+
+      const overlappingFree = freeBlocks.find(f => f.start * 60 < te && f.end * 60 > ts)
+
+      // Free gap before this task
+      const freeBefore = freeBlocks.filter(f => f.start * 60 < ts && f.end * 60 > currentMin)
+      if (freeBefore.length > 0) {
+        const first = freeBefore[0]
+        const gapStart = Math.max(currentMin, first.start * 60)
+        const gapEnd   = Math.min(ts, first.end * 60)
+        if (gapEnd - gapStart >= 30) {
+          result.push({ type: 'free', start: Math.floor(gapStart / 60), end: Math.ceil(gapEnd / 60), tipo: first.tipo })
+        }
+      }
+
+      result.push({ type: 'task', task, freeTipo: overlappingFree?.tipo })
+      currentMin = te
+    }
+
+    // Free at end of day
+    const endMin = END_HOUR * 60
+    const freeEnd = freeBlocks.filter(f => f.start * 60 < endMin && f.end * 60 > currentMin)
+    if (freeEnd.length > 0) {
+      const last = freeEnd[freeEnd.length - 1]
+      const gapEnd = Math.min(endMin, last.end * 60)
+      if (gapEnd - currentMin >= 30) {
+        result.push({ type: 'free', start: Math.floor(currentMin / 60), end: Math.ceil(gapEnd / 60), tipo: last.tipo })
+      }
+    }
+
+    return result
   }
 
-  function bloquesForDay(day: Date): BloqueDisp[] {
-    return disponibilidad[dateKey(day)] ?? []
-  }
-
-  function taskTop(startTime: string | null): number {
-    if (!startTime) return 0
-    const d = new Date(startTime)
-    return pctInGrid(d.getUTCHours() * 60 + d.getUTCMinutes())
-  }
-
-  function taskHeight(startTime: string | null, endTime: string | null): number {
-    if (!startTime || !endTime) return 0
-    const s = new Date(startTime), e = new Date(endTime)
-    const mins = Math.max(1, (e.getTime() - s.getTime()) / 60000)
-    return Math.max(0.2, (mins / TOTAL_MINS) * 100)
-  }
+  const interleaved = buildInterleaved()
 
   function navigate(dir: number) {
     const next = new Date(selectedDate); next.setDate(next.getDate() + dir)
     window.dispatchEvent(new CustomEvent('agenda-navigate', { detail: next }))
   }
 
-  // Get gradient for the selected day column
-  const dispSelected = bloquesForDay(selectedDate)
-  const gradientBg = buildGradient(dispSelected)
+  // 3-day strip
+  const days: Date[] = []
+  for (let i = -1; i <= 1; i++) {
+    const d = new Date(selectedDate); d.setDate(d.getDate() + i); days.push(d)
+  }
 
-  // Build hour markers
-  const slots = Array.from({ length: HALF_HOURS }, (_, i) => ({ h: START_HOUR + Math.floor(i / 2), m: (i % 2) * 30 }))
+  const isSelected = (d: Date) =>
+    d.getDate() === selectedDate.getDate() && d.getMonth() === selectedDate.getMonth()
+
+  const isTodayFn = (d: Date) => {
+    const t = new Date()
+    return d.getDate() === t.getDate() && d.getMonth() === t.getMonth() && d.getFullYear() === t.getFullYear()
+  }
+
+  const dateLabel = selectedDate.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })
+    .replace(',', '').replace(/^\w/, (c: string) => c.toUpperCase())
 
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
 
-      {/* ── Compact date nav + 3-day strip ── */}
+      {/* ── Compact date header ── */}
       <div style={{ background: 'var(--surface)', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
         {/* Date nav */}
-        <div style={{ display: 'flex', alignItems: 'center', padding: '6px 12px 4px', gap: 8 }}>
-          <button onClick={() => navigate(-1)} style={{ background: 'var(--surface2)', border: 'none', borderRadius: 6, color: 'var(--text)', width: 28, height: 28, fontSize: 16, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>‹</button>
+        <div style={{ display: 'flex', alignItems: 'center', padding: '8px 12px 6px', gap: 8 }}>
+          <button onClick={() => navigate(-1)} className="btn-icon" style={{ width: 28, height: 28, fontSize: 16 }}>‹</button>
           <div style={{ flex: 1, textAlign: 'center' }}>
-            <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>
-              {selectedDate.toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' }).replace(',', '')}
+            <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', textTransform: 'capitalize' }}>
+              {dateLabel}
             </span>
-            {isToday(selectedDate) && <span style={{ marginLeft: 6, fontSize: 10, color: 'var(--accent)', fontWeight: 600 }}>Hoy</span>}
+            {isToday && (
+              <span style={{ marginLeft: 6, fontSize: 10, color: 'var(--accent)', fontWeight: 600, background: 'var(--accent-soft)', padding: '1px 6px', borderRadius: 'var(--radius-full)' }}>
+                HOY
+              </span>
+            )}
           </div>
-          <button onClick={() => navigate(1)} style={{ background: 'var(--surface2)', border: 'none', borderRadius: 6, color: 'var(--text)', width: 28, height: 28, fontSize: 16, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>›</button>
+          <button onClick={() => navigate(1)} className="btn-icon" style={{ width: 28, height: 28, fontSize: 16 }}>›</button>
         </div>
         {/* 3-day strip */}
         <div style={{ display: 'flex' }}>
           {days.map((day, idx) => {
-            const blocks = bloquesForDay(day)
-            const sel = isSelected(day)
-            return (
-              <div key={idx} onClick={() => window.dispatchEvent(new CustomEvent('agenda-select', { detail: day }))}
-                style={{ flex: 1, padding: '6px 2px', textAlign: 'center', cursor: 'pointer', borderRight: idx < 2 ? '1px solid var(--border)' : 'none', background: sel ? 'var(--accent)' : 'transparent' }}>
-                <div style={{ fontSize: 9, fontWeight: 600, textTransform: 'uppercase', color: sel ? 'rgba(255,255,255,0.7)' : 'var(--text-dim)' }}>{WEEK_DAY(day)}</div>
-                <div style={{ fontSize: 15, fontWeight: 700, color: sel ? 'white' : isToday(day) ? 'var(--accent)' : 'var(--text)', marginTop: 1 }}>{day.getDate()}</div>
-              </div>
-            )
-          })}
-        </div>
-      </div>
-
-      {/* ── Main Grid ── */}
-      <div ref={scrollRef} className="ios-scroll"
-        style={{ flex: 1, overflow: 'auto', position: 'relative' }}>
-
-        {/* Time "now" indicator — isolated RAF, never re-renders parent */}
-        <NowIndicator />
-
-        <div style={{ display: 'flex', minHeight: '100%', position: 'relative' }}>
-
-          {/* ── Half-hour slots column ── */}
-          <div style={{ width: 44, flexShrink: 0, position: 'relative' }}>
-            {slots.map((slot, i) => (
-              <div key={i} style={{ height: `${100 / HALF_HOURS}%`, position: 'relative' }}>
-                {slot.m === 0 && (
-                  <span style={{
-                    position: 'absolute', top: -6, right: 6,
-                    fontSize: 10, color: 'var(--text-muted)',
-                    fontVariantNumeric: 'tabular-nums',
-                  }}>
-                    {slot.h.toString().padStart(2, '0')}:00
-                  </span>
-                )}
-              </div>
-            ))}
-          </div>
-
-          {/* ── Day columns ── */}
-          {days.map((day, idx) => {
-            const dayTasks  = tasksForDay(day)
-            const blocks    = bloquesForDay(day)
-            const isColSelected = isSelected(day)
-            const colGradient = isColSelected ? buildGradient(blocks) : 'transparent'
-
+            const sel   = isSelected(day)
+            const today = isTodayFn(day)
             return (
               <div key={idx}
                 onClick={() => window.dispatchEvent(new CustomEvent('agenda-select', { detail: day }))}
                 style={{
-                  flex: 1,
-                  borderLeft: idx > 0 ? '1px solid var(--border)' : 'none',
-                  position: 'relative',
-                  background: colGradient,
-                  cursor: 'pointer',
+                  flex: 1, padding: '6px 2px', textAlign: 'center', cursor: 'pointer',
+                  borderRight: idx < 2 ? '1px solid var(--border)' : 'none',
+                  background: sel ? 'var(--accent)' : 'transparent',
+                  borderRadius: sel ? '0 0 var(--radius-sm) var(--radius-sm)' : 'none',
                 }}>
-                {/* Half-hour slot lines */}
-                {slots.map((slot, i) => (
-                  <div key={i} style={{
-                    height: `${100 / HALF_HOURS}%`,
-                    borderBottom: '1px solid var(--border)',
-                    boxSizing: 'border-box',
-                  }} />
-                ))}
-
-                {/* Availability blocks overlay */}
-                {blocks.map((b, bi) => {
-                  const top    = pctInGrid(minsFromHour(b.horaInicio))
-                  const height = Math.max(0.5, pctInGrid(minsFromHour(b.horaFin)) - top)
-                  const style  = TIPO_STYLES[b.tipo] ?? TIPO_STYLES.OCUPADO
-                  return (
-                    <div key={bi} style={{
-                      position: 'absolute',
-                      top: `${top}%`, height: `${height}%`,
-                      left: 2, right: 2,
-                      background: style.bg,
-                      borderLeft: `3px solid ${style.border}`,
-                      borderRadius: 4,
-                      zIndex: 0,
-                      overflow: 'hidden',
-                      display: 'flex', alignItems: 'center',
-                    }}>
-                      <span style={{
-                        fontSize: 9, fontWeight: 600, color: style.textColor,
-                        paddingLeft: 4, lineHeight: 1, opacity: 0.8,
-                      }}>
-                        {b.label}
-                      </span>
-                    </div>
-                  )
-                })}
-
-                {/* Task blocks */}
-                {dayTasks.map(task => {
-                  const top    = taskTop(task.startTime)
-                  const height = taskHeight(task.startTime, task.endTime)
-                  if (top === 0 && height === 0) return null
-                  return (
-                    <SwipeableTask
-                      key={task.id ?? Math.random()}
-                      onSwipeRight={() => onTaskComplete?.(task)}
-                      onSwipeLeft={() => onTaskReschedule?.(task)}
-                      onClick={(e) => { (e as React.MouseEvent).stopPropagation(); onTaskClick(task) }}
-                      style={{
-                        position: 'absolute',
-                        top: `${top}%`, height: `${height}%`,
-                        left: 3, right: 3,
-                        background: task.done ? `${task.color}66` : task.color,
-                        borderRadius: 6,
-                        zIndex: 2,
-                        cursor: 'pointer',
-                        boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
-                        opacity: task.done ? 0.6 : 1,
-                      }}
-                    >
-                      <div style={{ padding: '3px 7px', display: 'flex', alignItems: 'flex-start', gap: 3, width: '100%', height: '100%', overflow: 'hidden' }}>
-                        <span style={{ fontSize: 11 }}>{task.iconId}</span>
-                        <span style={{
-                          fontSize: 10, fontWeight: 600, color: 'white',
-                          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                          textDecoration: task.done ? 'line-through' : 'none',
-                        }}>
-                          {task.title}
-                        </span>
-                        {task.startTime && (
-                          <span style={{
-                            fontSize: 9, color: 'rgba(255,255,255,0.7)',
-                            marginLeft: 'auto', flexShrink: 0,
-                            fontVariantNumeric: 'tabular-nums',
-                          }}>
-                            {formatTime(new Date(task.startTime))}
-                          </span>
-                        )}
-                      </div>
-                    </SwipeableTask>
-                  )
-                })}
+                <div style={{ fontSize: 9, fontWeight: 600, textTransform: 'uppercase', color: sel ? 'rgba(255,255,255,0.6)' : 'var(--text-dim)' }}>
+                  {WEEK_DAY_SHORT(day)}
+                </div>
+                <div style={{ fontSize: 15, fontWeight: 700, color: sel ? 'white' : today ? 'var(--accent)' : 'var(--text)', marginTop: 1 }}>
+                  {day.getDate()}
+                </div>
               </div>
             )
           })}
         </div>
       </div>
 
-      {/* ── FAB ── */}
-      <button onClick={onAddClick} style={{
-        position: 'absolute', bottom: 28, right: 24,
-        width: 56, height: 56, borderRadius: '50%',
-        background: 'var(--accent)', color: 'white',
-        fontSize: 28, border: 'none',
-        boxShadow: '0 4px 20px rgba(99,102,241,0.5)',
-        cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-        zIndex: 50,
-      }}>+</button>
+      {/* ── Task list ── */}
+      <div ref={scrollRef} className="ios-scroll" style={{ flex: 1, overflow: 'auto', padding: '8px 12px' }}>
+
+        {interleaved.length === 0 && (
+          <div className="empty-state" style={{ marginTop: 60 }}>
+            <div className="empty-icon">📋</div>
+            <div className="empty-title">Sin tareas</div>
+            <div className="empty-desc">Toca + para añadir una tarea a este día</div>
+            <button className="btn btn-primary" onClick={onAddClick} style={{ marginTop: 8 }}>+ Nueva tarea</button>
+          </div>
+        )}
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, paddingBottom: 80 }}>
+          {interleaved.map((slot, idx) => {
+            if (slot.type === 'free') {
+              return (
+                <FreeBlockRow
+                  key={`free-${idx}`}
+                  start={slot.start}
+                  end={slot.end}
+                  tipo={slot.tipo}
+                  onClick={onAddClick}
+                />
+              )
+            }
+
+            const { task, freeTipo } = slot
+            return (
+              <div key={task.id ?? `task-${idx}`} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <TaskCard
+                  task={task}
+                  onClick={() => onTaskClick(task)}
+                  onComplete={() => onTaskComplete?.(task)}
+                  onReschedule={() => onTaskReschedule?.(task)}
+                />
+                {freeTipo && <AvailabilityDot tipo={freeTipo} />}
+              </div>
+            )
+          })}
+        </div>
+      </div>
     </div>
   )
 }
-
-// ─── Memoized export — parent re-renders don't propagate ─────────────────────
 
 export default memo(AgendaViewInner, (prev, next) =>
   prev.tasks === next.tasks &&
