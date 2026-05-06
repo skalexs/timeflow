@@ -102,9 +102,9 @@ const CommandMenu = memo(function CommandMenu({ items, isOpen, onClose }: Comman
     >
       <div
         style={{
-          background: '#1c1c26',
+          background: 'var(--surface-2)',
           borderRadius: '16px',
-          border: '1px solid #2a2a3d',
+          border: '1px solid var(--border)',
           width: '560px',
           maxWidth: '90vw',
           maxHeight: '60vh',
@@ -121,7 +121,7 @@ const CommandMenu = memo(function CommandMenu({ items, isOpen, onClose }: Comman
           alignItems: 'center',
           gap: '12px',
           padding: '16px 20px',
-          borderBottom: '1px solid #2a2a3d',
+          borderBottom: '1px solid var(--border)',
         }}>
           <span style={{ fontSize: '20px' }}>⌘</span>
           <input
@@ -136,17 +136,17 @@ const CommandMenu = memo(function CommandMenu({ items, isOpen, onClose }: Comman
               border: 'none',
               outline: 'none',
               fontSize: '16px',
-              color: '#f0f0f5',
+              color: 'var(--text)',
               fontFamily: 'inherit',
             }}
           />
           <kbd style={{
-            background: '#2a2a3d',
+            background: 'var(--surface-3)',
             borderRadius: '6px',
             padding: '2px 8px',
             fontSize: '12px',
-            color: '#8888a0',
-            border: '1px solid #3a3a4d',
+            color: 'var(--text-dim)',
+            border: '1px solid var(--border)',
           }}>ESC</kbd>
         </div>
 
@@ -157,7 +157,7 @@ const CommandMenu = memo(function CommandMenu({ items, isOpen, onClose }: Comman
               <div style={{
                 fontSize: '11px',
                 fontWeight: 700,
-                color: '#6366f1',
+                color: 'var(--accent)',
                 textTransform: 'uppercase',
                 letterSpacing: '0.5px',
                 padding: '8px 12px 4px',
@@ -180,23 +180,23 @@ const CommandMenu = memo(function CommandMenu({ items, isOpen, onClose }: Comman
                       padding: '10px 12px',
                       borderRadius: '10px',
                       cursor: 'pointer',
-                      background: isSelected ? '#2a2a3d' : 'transparent',
+                      background: isSelected ? 'var(--surface)' : 'transparent',
                       transition: 'background 0.1s ease',
                     }}
                   >
                     {item.icon && <span style={{ fontSize: '18px', width: '24px', textAlign: 'center' }}>{item.icon}</span>}
                     <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: '14px', fontWeight: 600, color: '#f0f0f5' }}>{item.label}</div>
-                      {item.description && <div style={{ fontSize: '12px', color: '#8888a0', marginTop: '2px' }}>{item.description}</div>}
+                      <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text)' }}>{item.label}</div>
+                      {item.description && <div style={{ fontSize: '12px', color: 'var(--text-dim)', marginTop: '2px' }}>{item.description}</div>}
                     </div>
                     {item.shortcut && (
                       <kbd style={{
-                        background: '#13131a',
+                        background: 'var(--bg)',
                         borderRadius: '6px',
                         padding: '2px 8px',
                         fontSize: '11px',
-                        color: '#8888a0',
-                        border: '1px solid #2a2a3d',
+                        color: 'var(--text-dim)',
+                        border: '1px solid var(--border)',
                       }}>{item.shortcut}</kbd>
                     )}
                   </div>
@@ -205,7 +205,7 @@ const CommandMenu = memo(function CommandMenu({ items, isOpen, onClose }: Comman
             </div>
           ))}
           {filtered.length === 0 && (
-            <div style={{ textAlign: 'center', padding: '32px', color: '#8888a0', fontSize: '14px' }}>
+            <div style={{ textAlign: 'center', padding: '32px', color: 'var(--text-dim)', fontSize: '14px' }}>
               No results found
             </div>
           )}

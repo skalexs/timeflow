@@ -7,7 +7,7 @@ const mockOnSave = async () => {}
 const mockOnClose = () => {}
 
 describe('TaskModal quick date chips', () => {
-  it('renders all 6 date preset chips: Today, Tomorrow, Evening, Weekend, Next Week, Pick Date', () => {
+  it('renders all 6 date preset chips: Hoy, Mañana, Tarde, Finde, Semana, Elegir', () => {
     render(
       <TaskModal
         isOpen={true}
@@ -17,13 +17,13 @@ describe('TaskModal quick date chips', () => {
       />
     )
 
-    // The 6 chips should be present with English labels per UX spec
-    expect(screen.getByRole('button', { name: /Today/i })).toBeDefined()
-    expect(screen.getByRole('button', { name: /Tomorrow/i })).toBeDefined()
-    expect(screen.getByRole('button', { name: /Evening/i })).toBeDefined()
-    expect(screen.getByRole('button', { name: /Weekend/i })).toBeDefined()
-    expect(screen.getByRole('button', { name: /Next Week/i })).toBeDefined()
-    expect(screen.getByRole('button', { name: /Pick Date/i })).toBeDefined()
+    // The 6 chips should be present with Spanish labels per redesign
+    expect(screen.getByRole('button', { name: /Hoy/i })).toBeDefined()
+    expect(screen.getByRole('button', { name: /Mañana/i })).toBeDefined()
+    expect(screen.getByRole('button', { name: /Tarde/i })).toBeDefined()
+    expect(screen.getByRole('button', { name: /Finde/i })).toBeDefined()
+    expect(screen.getByRole('button', { name: /Semana/i })).toBeDefined()
+    expect(screen.getByRole('button', { name: /Elegir/i })).toBeDefined()
   })
 
   it('highlights the selected chip when clicked', async () => {
@@ -37,10 +37,12 @@ describe('TaskModal quick date chips', () => {
       />
     )
 
-    const todayChip = screen.getByRole('button', { name: /Today/i })
-    await user.click(todayChip)
+    const hoyChip = screen.getByRole('button', { name: /Hoy/i })
+    await user.click(hoyChip)
 
-    // The chip should have active styling (border color #6366f1 and background #6366f122)
-    expect(todayChip.style.border.includes('6366f1') || todayChip.style.borderWidth === '2px').toBeTruthy()
+    // After clicking Hoy, the chip border should reflect the selected state (2px vs 1px default).
+    // The chip's inline style border value should contain '2px' when selected.
+    const borderValue = (hoyChip as HTMLButtonElement).style.border
+    expect(borderValue).toContain('2px')
   })
 })
