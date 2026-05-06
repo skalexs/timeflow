@@ -98,24 +98,28 @@ export default function MotorConfig({ onClose }: { onClose: () => void }) {
     } catch (e) { console.error('Login error:', e) }
   }
 
-  async function handleCallback() {
+  // Exchange OAuth code if present in URL (called on mount and on every render to handle redirect)
+  useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     const code = params.get('code')
     if (code) {
-      try {
-        const res = await fetch('/api/auth', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ code }),
+      // Clean URL before exchanging
+      window.history.replaceState({}, '', window.location.pathname)
+      fetch('/api/auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code }),
+      })
+        .then(r => r.json())
+        .then(data => {
+          if (data.ok) {
+            setConnected(true)
+            setGoogleInfo({ email: data.email, name: data.name })
+          }
         })
-        const data = await res.json()
-        if (data.ok) {
-          setConnected(true)
-          setGoogleInfo({ email: data.email, name: data.name })
-        }
-      } catch {}
+        .catch(console.error)
     }
-  }
+  }, [])
 
   async function fetchCalendars() {
     if (!connected) return
@@ -168,8 +172,7 @@ export default function MotorConfig({ onClose }: { onClose: () => void }) {
   }
 
   useEffect(() => {
-    // Exchange OAuth code if present, then load config and check token status
-    handleCallback()
+    // Load config and check token status
     fetch('/api/motor-config')
       .then(r => r.json())
       .then(data => {

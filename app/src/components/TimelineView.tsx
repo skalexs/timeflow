@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import type { Task, BloqueDisp, GoogleEvent } from '@/types'
 import SwipeableTask from './SwipeableTask'
 import FocusBlock from './FocusBlock'
@@ -124,6 +124,7 @@ interface TimelineViewProps {
   tasks: Task[]
   disponibilidad: Record<string, BloqueDisp[]>
   googleEvents?: GoogleEvent[]
+  selectedDate?: Date
   onTaskClick: (task: Task) => void
   onTaskComplete?: (task: Task) => void
   onTaskReschedule?: (task: Task) => void
@@ -133,12 +134,17 @@ interface TimelineViewProps {
 
 const SWIPE_THRESHOLD = 50
 
-export default function TimelineView({ tasks, disponibilidad, googleEvents, onTaskClick, onTaskComplete, onTaskReschedule, onRefresh, onFreeBlockClick }: TimelineViewProps) {
+export default function TimelineView({ tasks, disponibilidad, googleEvents, selectedDate: externalDate, onTaskClick, onTaskComplete, onTaskReschedule, onRefresh, onFreeBlockClick }: TimelineViewProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const headerRef = useRef<HTMLDivElement>(null)
-  const [selected, setSelected] = useState(new Date())
+  const [selected, setSelected] = useState(externalDate ?? new Date())
   const [currentTime, setCurrentTime] = useState(new Date())
+
+  // Sync with external date changes (e.g., from Calendar month picker)
+  useEffect(() => {
+    if (externalDate) setSelected(externalDate)
+  }, [externalDate])
 
   useEffect(() => {
     const interval = setInterval(() => setCurrentTime(new Date()), 60000)
@@ -252,12 +258,14 @@ export default function TimelineView({ tasks, disponibilidad, googleEvents, onTa
     return () => el.removeEventListener('scroll', onScroll)
   }, [])
 
+  // Scroll to current time on mount AND when currentTime updates every minute
   useEffect(() => {
     if (isToday && scrollRef.current) {
-      const target = (nowMinutes / 1440) * 1440 - scrollRef.current.clientHeight / 2
+      const totalMins = 60 * currentTime.getHours() + currentTime.getMinutes()
+      const target = (totalMins / 1440) * scrollRef.current.scrollHeight - scrollRef.current.clientHeight / 2
       scrollRef.current.scrollTop = Math.max(0, target)
     }
-  }, [isToday, nowMinutes])
+  }, [isToday, currentTime])
 
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     if (e.touches.length !== 1) return

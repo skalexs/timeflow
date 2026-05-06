@@ -247,6 +247,7 @@ export default function TimeFlow() {
               tasks={tasks}
               disponibilidad={disponibilidad}
               googleEvents={googleEvents}
+              selectedDate={selectedDate}
               onTaskClick={openDetail}
               onTaskComplete={handleTaskComplete}
               onTaskReschedule={handleTaskReschedule}
