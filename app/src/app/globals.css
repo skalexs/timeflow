@@ -163,6 +163,7 @@ body {
 /* ── 7. iOS momentum scroll ─────────────────────────────────── */
 .ios-scroll {
   -webkit-overflow-scrolling: touch;
+  min-height: 0;
 }
 
 /* ── 8. Keyframe animations ──────────────────────────────────── */
@@ -218,6 +219,10 @@ body {
 /* ── 9. Utility classes ─────────────────────────────────────── */
 
 .view-enter {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1;
   animation: viewIn var(--t-view) both;
 }
 

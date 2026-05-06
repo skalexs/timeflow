@@ -463,7 +463,7 @@ export default function TimelineView({ tasks, disponibilidad, googleEvents, sele
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     <div
       ref={containerRef}
-      style={{ display: 'flex', flexDirection: 'column', height: '100%', background: 'var(--bg)' }}
+      style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, background: 'var(--bg)' }}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
@@ -640,15 +640,13 @@ export default function TimelineView({ tasks, disponibilidad, googleEvents, sele
       </div>
 
       {/* ── Scrollable timeline ───────────────────────────────────────────── */}
-      <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', position: 'relative', minHeight: 0 }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '44px 1fr', position: 'relative', height: `${24 * HOUR_HEIGHT[viewDensity]}px`, transition: 'height 0.3s ease' }}>
+      <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
+        <div style={{ position: 'relative', height: `${24 * HOUR_HEIGHT[viewDensity] + 60}px` }}>
           {/* Time slot labels */}
           <TimeSlotLabels slots={slots} />
 
           {/* Column */}
-          <div data-timeline-col style={{ position: 'relative', height: `${24 * HOUR_HEIGHT[viewDensity]}px`, borderLeft: '1px solid #2a2a3d', transition: 'height 0.3s ease' }}
-            onTouchEnd={handleTimelineDoubleTap}
-          >
+          <div data-timeline-col style={{ position: 'relative', height: `${24 * HOUR_HEIGHT[viewDensity] + 60}px` }} onTouchEnd={handleTimelineDoubleTap}>
             {/* Half-hour slot lines */}
             {slots.map((slot, i) => <div key={i} style={{ position: 'absolute', top: `${(i / 48) * 100}%`, left: 0, right: 0, height: '1px', background: 'var(--surface3)' }} />)}
 
